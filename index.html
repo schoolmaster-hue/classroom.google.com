@@ -195,8 +195,8 @@
         }
 
         .screen-slider { flex-grow: 1; overflow: hidden; position: relative; width: 100%; z-index: 15; }
-        .screens-container { display: flex; width: 400%; height: 100%; transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1); }
-        .menu-screen { width: 25%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 90px; position: relative; flex-shrink: 0; box-sizing: border-box; }
+        .screens-container { display: flex; width: 500%; height: 100%; transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1); }
+        .menu-screen { width: 20%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 90px; position: relative; flex-shrink: 0; box-sizing: border-box; }
         
         /* TITLE SCREEN */
         #title-screen {
@@ -239,13 +239,104 @@
         }
         .nav-btn { 
             background: none; border: none; color: #6a7491; font-family: 'Press Start 2P'; 
-            font-size: 11px; cursor: pointer; text-align: center; width: 25%; height: 100%; 
-            position: relative; transition: all 0.15s; letter-spacing: 1px;
+            font-size: 10px; cursor: pointer; text-align: center; width: 20%; height: 100%; 
+            position: relative; transition: all 0.15s; letter-spacing: 0.5px;
             display: flex; align-items: center; justify-content: center;
         }
         .nav-btn:hover { color: #fff; background: rgba(255,255,255,0.03); }
         .nav-btn.active { color: var(--accent); background: #161729; text-shadow: 0 0 10px var(--accent-glow); }
-        .nav-indicator { position: absolute; top: -4px; left: 0; width: 25%; height: 4px; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); transition: left 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); z-index: 21; }
+        .nav-indicator { position: absolute; top: -4px; left: 0; width: 20%; height: 4px; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); transition: left 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); z-index: 21; }
+
+        /* SEASON PASS STYLES */
+        .pass-container { width: 92%; max-width: 900px; display: flex; flex-direction: column; gap: 16px; margin-top: 10px; }
+        .pass-header-card {
+            background: linear-gradient(135deg, #1b1633 0%, #0d0f1f 100%);
+            border: 3px solid #7000ff; box-shadow: 0 0 20px rgba(112, 0, 255, 0.3), 4px 4px 0 #000;
+            padding: 16px 20px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .pass-banner-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .pass-title-group { display: flex; flex-direction: column; gap: 4px; }
+        .pass-season-badge { font-size: 9px; color: #ff2a6d; letter-spacing: 2px; font-weight: bold; }
+        .pass-season-name { font-size: 16px; color: #ffd700; text-shadow: 2px 2px 0 #000, 0 0 12px rgba(255,215,0,0.5); }
+        .pass-timer-pill { font-size: 8px; color: #05d9e8; background: #0c0d18; border: 2px solid #05d9e8; padding: 6px 12px; border-radius: 2px; }
+        .pass-bar-wrap { width: 100%; height: 20px; background: #0c0d18; border: 2px solid #3d4368; position: relative; overflow: hidden; box-shadow: inset 0 0 8px #000; }
+        .pass-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #7000ff, #ff2a6d, #ffd700); transition: width 0.3s ease; box-shadow: 0 0 15px rgba(255,42,109,0.8); }
+        .pass-bar-text { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 8px; color: #fff; text-shadow: 1px 1px 0 #000; letter-spacing: 1px; }
+        .pass-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; width: 100%; margin-bottom: 25px; }
+        .pass-tier-card {
+            background: #141525; border: 3px solid #2d324d; padding: 12px 8px;
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            position: relative; box-shadow: 3px 3px 0 #000; transition: transform 0.15s, border-color 0.15s;
+        }
+        .pass-tier-card.unlocked { border-color: #00ff66; box-shadow: 3px 3px 0 #000, 0 0 10px rgba(0,255,102,0.3); }
+        .pass-tier-card.claimed { border-color: #3d4368; opacity: 0.65; }
+        .pass-tier-card.grand-tier {
+            border-color: #ffd700; background: linear-gradient(180deg, #261a38 0%, #151124 100%);
+            box-shadow: 4px 4px 0 #000, 0 0 20px rgba(255,215,0,0.4);
+        }
+        .pass-tier-num { font-size: 8px; color: #7f8ca8; letter-spacing: 1px; margin-bottom: 6px; }
+        .pass-reward-name { font-size: 9px; color: #fff; font-weight: bold; margin: 6px 0; word-break: break-word; line-height: 1.3; }
+        .pass-reward-desc { font-size: 7px; color: #aaa; margin-bottom: 8px; line-height: 1.3; }
+        .pass-btn-claim { font-size: 7.5px; padding: 6px 10px; width: 90%; margin-top: auto; }
+
+        /* EVENT EXCLUSIVE BADGES & BANNERS */
+        .hero-event-badge {
+            position: absolute; top: 4px; right: 4px;
+            background: linear-gradient(135deg, rgba(255, 136, 0, 0.95), rgba(180, 0, 0, 0.95));
+            border: 1px solid #ffd700;
+            border-radius: 3px;
+            font-size: 8px;
+            line-height: 1;
+            padding: 2px 3px;
+            box-shadow: 0 0 8px rgba(255, 136, 0, 0.9), 1px 1px 0 #000;
+            pointer-events: none;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: eventBadgePulse 2.4s infinite ease-in-out;
+        }
+        .hero-event-badge img {
+            width: 14px;
+            height: 14px;
+            image-rendering: pixelated;
+            display: block;
+        }
+        @keyframes eventBadgePulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px #ff8800); }
+            50% { transform: scale(1.15); filter: drop-shadow(0 0 10px #ffd700); }
+        }
+        .event-exclusive-banner {
+            display: flex; align-items: center; gap: 10px;
+            background: linear-gradient(90deg, rgba(50, 15, 60, 0.9) 0%, rgba(35, 10, 30, 0.9) 100%);
+            border: 2px solid #ff8800;
+            box-shadow: 0 0 14px rgba(255, 136, 0, 0.4), 3px 3px 0 #000;
+            padding: 8px 10px;
+            margin: 10px 0 12px 0;
+            box-sizing: border-box;
+        }
+        .event-exclusive-banner .event-badge-icon {
+            filter: drop-shadow(0 0 6px #ff8800);
+            animation: eventBadgePulse 2.4s infinite ease-in-out;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .event-exclusive-banner .event-badge-icon img {
+            width: 28px;
+            height: 28px;
+            image-rendering: pixelated;
+            display: block;
+        }
+        .event-exclusive-banner .event-banner-tag {
+            color: #ff8800; font-size: 8px; font-weight: bold; letter-spacing: 1px;
+            margin-bottom: 3px; display: flex; align-items: center; gap: 4px;
+        }
+        .event-exclusive-banner .event-banner-desc {
+            color: #ffd700; font-size: 8px; line-height: 1.4;
+            text-shadow: 1px 1px 0 #000;
+        }
 
         /* GENERAL ELEMENTS */
         h1 { font-size: 22px; color: var(--accent); margin: 24px 0 18px 0; text-shadow: 3px 3px 0 #000, 0 0 15px var(--accent-glow); text-align: center; letter-spacing: 2px; }
@@ -484,7 +575,7 @@
         /* AMBIENT MENU CANVAS */
         #menu-bg-canvas {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            pointer-events: none; z-index: 5; opacity: 0.65;
+            pointer-events: none; z-index: 65; opacity: 0.75;
             image-rendering: pixelated;
         }
 
@@ -653,6 +744,11 @@
                     <div class="loadout-grid" id="loadout-grid"></div>
                 </div>
 
+                <div class="menu-screen" id="tab-pass">
+                    <h1>SEASON PASS</h1>
+                    <div class="pass-container" id="pass-container"></div>
+                </div>
+
                 <div class="menu-screen" id="tab-settings">
                     <h1>SETTINGS</h1>
                     <div class="settings-container">
@@ -686,7 +782,8 @@
             <button class="nav-btn active" onclick="ui.switchTab(0)">BATTLE</button>
             <button class="nav-btn" onclick="ui.switchTab(1)">HEROES</button>
             <button class="nav-btn" onclick="ui.switchTab(2)">LOADOUT</button>
-            <button class="nav-btn" onclick="ui.switchTab(3)">SETTINGS</button>
+            <button class="nav-btn" onclick="ui.switchTab(3)">PASS</button>
+            <button class="nav-btn" onclick="ui.switchTab(4)">SETTINGS</button>
         </div>
     </div>
 
@@ -712,20 +809,20 @@
         </div>
     </div>
 
-    <div id="overlay-levelup" class="menu-screen hidden" style="z-index: 50; background: rgba(0,0,0,0.95); width:100%; position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center;">
-        <h2 id="lvl-title" style="color: #05d9e8; margin-top: 50px;">LEVEL UP!</h2>
-        <div class="card-container" id="card-container"></div>
-        <button id="btn-col-all" class="btn hidden" onclick="GAME.collectChest()">COLLECT ALL</button>
+    <div id="overlay-levelup" class="menu-screen hidden" style="z-index: 70; background: radial-gradient(circle at 50% 50%, rgba(14, 16, 32, 0.72) 0%, rgba(5, 5, 12, 0.88) 100%); width:100%; position:absolute; top:0; left:0; display:flex; align-items:center; justify-content:center; backdrop-filter: blur(1px);">
+        <h2 id="lvl-title" style="color: #05d9e8; margin-top: 50px; z-index: 71; position: relative;">LEVEL UP!</h2>
+        <div class="card-container" id="card-container" style="z-index: 71; position: relative;"></div>
+        <button id="btn-col-all" class="btn hidden" style="z-index: 71; position: relative;" onclick="GAME.collectChest()">COLLECT ALL</button>
     </div>
 
-    <div id="overlay-pause" class="menu-screen hidden" style="z-index: 60; background: rgba(0,0,0,0.8); justify-content: center; width:100%; position:absolute; top:0; left:0;">
+    <div id="overlay-pause" class="menu-screen hidden" style="z-index: 80; background: rgba(0,0,0,0.85); justify-content: center; width:100%; position:absolute; top:0; left:0;">
         <h2>PAUSED</h2>
         <button class="btn" onclick="GAME.togglePause()">RESUME</button>
         <button class="btn btn-green" onclick="GAME.quit(true)">SAVE & QUIT</button>
         <button class="btn btn-red" onclick="GAME.quit(false, true)">ABANDON</button>
     </div>
 
-    <div id="overlay-gameover" class="menu-screen hidden" style="z-index: 60; background: rgba(0,0,0,0.95); justify-content: center; width:100%; position:absolute; top:0; left:0;">
+    <div id="overlay-gameover" class="menu-screen hidden" style="z-index: 80; background: rgba(0,0,0,0.88); justify-content: center; width:100%; position:absolute; top:0; left:0;">
         <h1 id="go-title">GAME OVER</h1>
         <div id="go-stats" style="margin-bottom: 30px; line-height: 2; font-size: 12px; text-align: center; color: #ccc"></div>
         <button class="btn" onclick="ui.returnToMenu()">CONTINUE</button>
@@ -1411,6 +1508,57 @@ var SPRITES = {
         "_k4RRR4k_",
         "__k4R4k__",
         "___k4k___"
+    ],
+    h_skel_lord: [
+        "___kyyyyk___",
+        "__kyyYYYYyyk",
+        "__kYwdwwdwYk",
+        "__kYwwwwwwYk",
+        "___kswwwsk__",
+        "__k9dMMd9k__",
+        "_k9dMMMMd9k_",
+        "_k9MMMMMM9k_",
+        "_kMMsddsMMk_",
+        "_kMMsddsMMk_",
+        "_kM_kMMk_Mk_",
+        "_kk_kkkk_kk_"
+    ],
+    skel_warrior: [
+        "____kwwk____",
+        "___kwwwwk___",
+        "___kwdwwdk__",
+        "___kwwwwk___",
+        "____kwwk____",
+        "__ksswwssk__",
+        "_ksw_ww_wsk_",
+        "_kswwwwwskk_",
+        "___kwwwwk___",
+        "___kssssk___",
+        "___ks__sk___",
+        "___kk__kk___"
+    ],
+    icon_pumpkin: [
+        "____kGGk____",
+        "___koGok____",
+        "__koooooo___",
+        "_koooodook__",
+        "koodoodoookk",
+        "kooodoodoook",
+        "koodddddoook",
+        "_koodddoook_",
+        "__koooooo___",
+        "____kkkk____"
+    ],
+    icon_lock: [
+        "___kmmmmk___",
+        "__km____mk__",
+        "__km____mk__",
+        "_kYYyyyyYYk_",
+        "_kYyyyyyyYk_",
+        "_kYyydkydYk_",
+        "_kYyykkyyYk_",
+        "_kYyyyyyyYk_",
+        "__kYYYYYYk__"
     ]
 };
 
@@ -1564,7 +1712,8 @@ var HEROES = [
     {id:'druid', n:'Druid', r:'epic', hp:120, spd:1, abil:'Roots', desc:'Stops enemies for 3s'},
     {id:'ninja', n:'Ninja', r:'epic', hp:80, spd:1.3, abil:'Dash', desc:'Invisible + Speed'},
     {id:'viking', n:'Viking', r:'legend', hp:200, spd:0.9, abil:'Rage', desc:'Double damage for 5s'},
-    {id:'angel', n:'Archangel', r:'legend', hp:150, spd:1.1, abil:'Smite', desc:'Heavy damage to enemies'}
+    {id:'angel', n:'Archangel', r:'legend', hp:150, spd:1.1, abil:'Smite', desc:'Heavy damage to enemies'},
+    {id:'skel_lord', n:'Skeleton Lord', r:'legend', hp:175, spd:1.05, abil:'Legion', desc:'Summons 4 Skeleton Warriors to swarm enemies', event:{sprite:'icon_pumpkin', tag:'EVENT EXCLUSIVE', title:'2026 HALLOWEEN PASS', desc:'This hero was only obtainable from the 2026 Halloween season pass'}}
 ];
 
 var WEAPONS = {
@@ -1624,7 +1773,6 @@ var PASSIVES = [
     { id: 'speed', name: 'Empty Tome', desc: '-10% Cooldown', icon: 'i_speed', stat: 'cd', val: -0.1 },
     { id: 'area', name: 'Candelabra', desc: '+10% Area', icon: 'i_might', stat: 'area', val: 0.1 },
     { id: 'magnet', name: 'Attractorb', desc: '+25% Pickup Range', icon: 'i_magnet', stat: 'mag', val: 0.25 },
-    { id: 'armor', name: 'Armor', desc: '+1 Armor', icon: 'i_armor', stat: 'arm', val: 1 },
     { id: 'luck', name: 'Clover', desc: '+10% Luck', icon: 'i_luck', stat: 'luck', val: 0.1 },
     { id: 'health', name: 'Hollow Heart', desc: '+20% HP & Heal', icon: 'i_health', stat: 'health', val: 1 }
 ];
@@ -1726,7 +1874,7 @@ var AU = {
 
 /* --- SAVES SYSTEM --- */
 var SaveSystem = {
-    d: { signature: 'PSA_REL_V1', gold:0, kills:0, unlockedMaps:1, heroes:['warlock'], curHero:'warlock', weps:{}, armors:{}, curArmor:null, vol:true, aim:false, runData:null, selMap: 1 },
+    d: { signature: 'PSA_REL_V1', gold:0, kills:0, unlockedMaps:1, heroes:['warlock'], curHero:'warlock', weps:{}, armors:{}, curArmor:null, vol:true, aim:false, runData:null, selMap: 1, passXP: 0, passClaimed: [] },
     save: function(silent=false) { 
         this.d.signature = 'PSA_REL_V1'; 
         localStorage.setItem('psv5', JSON.stringify(this.d)); 
@@ -1751,6 +1899,8 @@ var SaveSystem = {
         }
         if (typeof this.d.vol === 'undefined') this.d.vol = true;
         if (!this.d.armors) this.d.armors = {};
+        if (typeof this.d.passXP === 'undefined') this.d.passXP = 0;
+        if (!this.d.passClaimed) this.d.passClaimed = [];
         if(this.d.selMap) GAME.selMap = this.d.selMap;
         this.upd(); 
 
@@ -1802,7 +1952,9 @@ var SaveSystem = {
             w: this.d.weps,
             a: this.d.armors,
             ca: this.d.curArmor,
-            r: this.d.runData
+            r: this.d.runData,
+            px: this.d.passXP || 0,
+            pc: this.d.passClaimed || []
         };
         const key = 'PSA2' + btoa(JSON.stringify(m));
         const input = document.getElementById('save-key-input');
@@ -1826,7 +1978,9 @@ var SaveSystem = {
             w: this.d.weps,
             a: this.d.armors,
             ca: this.d.curArmor,
-            r: this.d.runData
+            r: this.d.runData,
+            px: this.d.passXP || 0,
+            pc: this.d.passClaimed || []
         };
         const key = 'PSA2' + btoa(JSON.stringify(m));
         const input = document.getElementById('load-input');
@@ -1863,11 +2017,14 @@ var SaveSystem = {
                 this.d.armors = m.a ?? (this.d.armors || {});
                 this.d.curArmor = m.ca ?? this.d.curArmor;
                 this.d.runData = m.r ?? null;
+                this.d.passXP = m.px ?? (this.d.passXP || 0);
+                this.d.passClaimed = m.pc ?? (this.d.passClaimed || []);
                 this.save(true);
                 ui.toast("DATA IMPORTED & SAVED!");
                 GAME.selMap = this.d.selMap || 1; 
                 renderBattleScreen();
                 renderHeroes(); 
+                renderSeasonPass();
                 if(ui) ui.startGame();
             } catch(e) { ui.toast("CORRUPT SAVE KEY"); }
         } else {
@@ -2006,8 +2163,7 @@ class Player extends Ent {
         if(!this.armorName || !ARMORS[this.armorName]) return;
         const armStats = calculateArmorStats(this.armorName, this.armorLevel);
         if(!armStats) return;
-        // Total base armor from item + upgrades + passive armor
-        this.stats.arm = armStats.arm + (this.passiveLevels['armor'] || 0);
+        this.stats.arm = armStats.arm;
         this.stats.blockPct = armStats.blockPct;
     }
     upd() {
@@ -2342,9 +2498,80 @@ class Pickup extends Ent {
     }
 }
 
+class SkeletonMinion extends Ent {
+    constructor(x, y) {
+        super(x, y, 'skel_warrior');
+        this.w = 32; this.h = 32;
+        this.life = 900; // 15 seconds lifespan
+        this.maxLife = 900;
+        this.spd = 3.6;
+        this.dmg = 24 * (GAME.p ? GAME.p.stats.might : 1);
+        this.attackCd = 0;
+    }
+    upd() {
+        this.life--;
+        if(this.life <= 0) { this.d = true; return; }
+        if(this.attackCd > 0) this.attackCd--;
+        
+        // Find nearest living enemy to charge and attack
+        let target = null;
+        let minD = 99999;
+        (GAME.es || []).forEach(e => {
+            if(!e.d) {
+                const d = Math.hypot(e.x - this.x, e.y - this.y);
+                if(d < minD) { minD = d; target = e; }
+            }
+        });
+
+        if(target && minD < 600) {
+            let dx = target.x - this.x;
+            let dy = target.y - this.y;
+            const d = Math.hypot(dx, dy);
+            if(d > 0) { dx /= d; dy /= d; }
+            this.x += dx * this.spd;
+            this.y += dy * this.spd;
+            this.fl = dx < 0;
+            this.bob += 0.3;
+            
+            // Melee strike on enemy
+            if(d < (this.w/2 + target.w/2 + 6) && this.attackCd <= 0) {
+                target.hit(this.dmg, dx * 2, dy * 2);
+                this.attackCd = 25; // Attack cooldown
+                AU.play(180, 'sawtooth', 0.1, 0.4);
+                GAME.spawnParticles(target.x, target.y, '#ffd700', 6);
+                GAME.dmg("SLASH!", target.x, target.y - 20, '#ffd700', false);
+            }
+        } else if (GAME.p) {
+            // Orbit/follow player
+            let dx = GAME.p.x - this.x;
+            let dy = GAME.p.y - this.y;
+            const d = Math.hypot(dx, dy);
+            if(d > 70) {
+                if(d > 0) { dx /= d; dy /= d; }
+                this.x += dx * (this.spd * 0.9);
+                this.y += dy * (this.spd * 0.9);
+                this.fl = dx < 0;
+                this.bob += 0.2;
+            }
+        }
+    }
+    draw(ctx, cx, cy) {
+        // Subtle spectral aura under skeleton
+        const sx = this.x - cx, sy = this.y - cy;
+        if(sx < -64 || sx > C.W + 64 || sy < -64 || sy > C.H + 64) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(112, 0, 255, 0.25)';
+        ctx.beginPath();
+        ctx.arc(sx + this.w/2, sy + this.h/2 + 6, 16, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        super.draw(ctx, cx, cy);
+    }
+}
+
 /* --- GAME ENGINE (RESTORED) --- */
 var GAME = {
-    on:false, p:null, es:[], ps:[], projs:[], enemyProjs: [], boss:[], time:0, frame:0, gold:0, kills:0, shake:0,
+    on:false, p:null, es:[], ps:[], projs:[], enemyProjs: [], boss:[], allies:[], time:0, frame:0, gold:0, kills:0, shake:0,
     combo:0, comboTimer:0, selMap: 1, lastTime: 0, chestItems: [], particles: [], dmgNums: [], shockwaves: [],
     
     startSelected: function() { 
@@ -2433,7 +2660,7 @@ var GAME = {
             this.p.weps = [];
             ui.updateAbilityIcon(this.p.data); 
             
-            this.es=[]; this.ps=[]; this.projs=[]; this.enemyProjs=[]; this.boss=[]; this.particles=[]; this.dmgNums=[]; this.shockwaves=[];
+            this.es=[]; this.ps=[]; this.projs=[]; this.enemyProjs=[]; this.boss=[]; this.allies=[]; this.particles=[]; this.dmgNums=[]; this.shockwaves=[];
             this.time=0; this.frame=0; this.on=true; this.paused=false; this.combo=0;
             this.gold = 0; this.kills = 0; this.lastTime = 0;
             requestAnimationFrame(this.loop);
@@ -2595,6 +2822,7 @@ var GAME = {
             
             this.projs = [];
             this.enemyProjs = [];
+            this.allies = [];
             this.particles = [];
             this.dmgNums = [];
             this.shockwaves = [];
@@ -2648,6 +2876,10 @@ var GAME = {
             if(GAME.time===600 && !GAME.fin) { GAME.spawnBoss(GAME.map.boss, GAME.map.bossName); GAME.fin=true; }
             
             GAME.p.upd();
+            if(GAME.allies) {
+                GAME.allies.forEach(a => a.upd());
+                GAME.allies = GAME.allies.filter(a => !a.d);
+            }
             GAME.es.forEach(e=>e.upd()); GAME.es=GAME.es.filter(e=>!e.d);
             GAME.es.forEach(e=>{ if(Math.hypot(e.x-GAME.p.x, e.y-GAME.p.y)<30) GAME.p.hit(e.dmg); });
             
@@ -2800,7 +3032,7 @@ var GAME = {
         ctx.stroke();
         ctx.restore();
 
-        [...GAME.ps,...GAME.es,GAME.p].forEach(e => { if(e && typeof e.draw === 'function') e.draw(ctx,cx,cy); });
+        [...GAME.ps,...GAME.es,...(GAME.allies||[]),GAME.p].forEach(e => { if(e && typeof e.draw === 'function') e.draw(ctx,cx,cy); });
         
         GAME.projs.filter(p=>!p.zone).forEach(p => {
             if(p.isSmoke) { ctx.fillStyle='#fff'; ctx.fillRect(p.x-cx, p.y-cy, 4, 4); }
@@ -3070,6 +3302,27 @@ var GAME = {
             AU.play(1200, 'sine', 0.4, 0.6);
             GAME.shake = 30;
             GAME.p.acd = 1200; // Long cooldown
+        } else if (hid === 'skel_lord') {
+            // SKELETON LEGION SUMMON - SUMMONS 4 SKELETON WARRIORS THAT CHARGE & ATTACK
+            GAME.dmg("LEGION!", GAME.p.x, GAME.p.y - 45, '#ffd700', true);
+            GAME.spawnShockwave(GAME.p.x, GAME.p.y, '#ffd700', 160, 22, 5);
+            GAME.spawnShockwave(GAME.p.x, GAME.p.y, '#7000ff', 240, 28, 4);
+            
+            for(let i = 0; i < 4; i++) {
+                const angle = (i / 4) * Math.PI * 2;
+                const sx = GAME.p.x + Math.cos(angle) * 45;
+                const sy = GAME.p.y + Math.sin(angle) * 45;
+                if(!GAME.allies) GAME.allies = [];
+                GAME.allies.push(new SkeletonMinion(sx, sy));
+                GAME.spawnParticles(sx, sy, '#ffd700', 15);
+                GAME.spawnParticles(sx, sy, '#7000ff', 12);
+                GAME.spawnShockwave(sx, sy, '#ffd700', 45, 10, 2);
+            }
+            AU.play(140, 'sawtooth', 0.35, 0.6);
+            AU.play(260, 'square', 0.25, 0.5);
+            AU.play(440, 'triangle', 0.2, 0.4);
+            GAME.shake = 18;
+            GAME.p.acd = 480; // 8s cooldown
         }
         
         ui.updHUD();
@@ -3270,9 +3523,11 @@ var GAME = {
         GAME.on=false; 
         SaveSystem.d.gold+=GAME.gold; 
         SaveSystem.d.kills+=GAME.kills; 
+        const earnedPassXP = Math.floor(GAME.kills * 1.5) + Math.floor(GAME.time / 2);
+        SaveSystem.d.passXP = (SaveSystem.d.passXP || 0) + earnedPassXP;
         SaveSystem.d.runData = null; // Run over
         SaveSystem.save(); 
-        document.getElementById('go-stats').innerText=`KILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}`; 
+        document.getElementById('go-stats').innerText=`KILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}\nSEASON PASS XP: +${earnedPassXP}`; 
         document.getElementById('overlay-gameover').classList.remove('hidden'); 
     },
     
@@ -3281,11 +3536,13 @@ var GAME = {
         GAME.on=false; 
         SaveSystem.d.gold+=GAME.gold; 
         SaveSystem.d.kills+=GAME.kills; 
+        const earnedPassXP = Math.floor(GAME.kills * 1.5) + Math.floor(GAME.time / 2) + 200; // 200 Bonus XP for Victory
+        SaveSystem.d.passXP = (SaveSystem.d.passXP || 0) + earnedPassXP;
         SaveSystem.d.runData = null; // Run over
         SaveSystem.save(); 
         document.getElementById('go-title').innerText = "VICTORY!";
         document.getElementById('go-title').style.color = "#0f0";
-        document.getElementById('go-stats').innerText=`MAP CLEARED!\nKILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}`; 
+        document.getElementById('go-stats').innerText=`MAP CLEARED!\nKILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}\nSEASON PASS XP: +${earnedPassXP} (VICTORY BONUS!)`; 
         document.getElementById('overlay-gameover').classList.remove('hidden'); 
     },
     buyHero: function() {
@@ -3339,8 +3596,16 @@ var ui = {
         ui.switchTab(0); 
         document.getElementById('ui-layer').classList.add('hidden'); 
         document.getElementById('title-screen').classList.add('hidden');
+        
+        // Clear frozen battle death frame from gameCanvas so ambient background shines through
+        const gCvs = document.getElementById('gameCanvas');
+        if(gCvs) {
+            const gCtx = gCvs.getContext('2d');
+            if(gCtx) gCtx.clearRect(0, 0, gCvs.width, gCvs.height);
+        }
     },
     returnToMenu: function() { 
+        GAME.on = false;
         ui.startTransition(() => {
             ui.hideOverlays(); 
             ui.showMenu();
@@ -3636,9 +3901,12 @@ var ui = {
     switchTab: function(idx) {
         AU.ui(); 
         document.querySelectorAll('.nav-btn').forEach((b, i) => { if(i===idx) b.classList.add('active'); else b.classList.remove('active'); });
-        document.getElementById('nav-ind').style.left = (idx*25)+'%';
-        document.getElementById('screens-container').style.transform = `translateX(-${idx*25}%)`;
-        if(idx===0) renderBattleScreen(); if(idx===1) renderHeroes(); if(idx===2) renderLoadout();
+        document.getElementById('nav-ind').style.left = (idx*20)+'%';
+        document.getElementById('screens-container').style.transform = `translateX(-${idx*20}%)`;
+        if(idx===0) renderBattleScreen(); 
+        if(idx===1) renderHeroes(); 
+        if(idx===2) renderLoadout();
+        if(idx===3) renderSeasonPass();
     },
     toastTimer: null,
     toast: function(msg) {
@@ -3762,7 +4030,9 @@ function showWorldMap() {
             </div>
         `;
         if(!u) {
-            const lock = document.createElement('div'); lock.className = 'banner-lock-icon'; lock.innerHTML = '🔒';
+            const lock = document.createElement('div'); lock.className = 'banner-lock-icon';
+            const lockImg = (ASSETS['icon_lock'] ? ASSETS['icon_lock'].src : '');
+            lock.innerHTML = lockImg ? `<img src="${lockImg}" style="width:28px;height:28px;image-rendering:pixelated;filter:drop-shadow(2px 2px 0 #000);">` : 'LOCKED';
             banner.prepend(lock);
         }
         const btnU = document.createElement('button'); btnU.className = 'btn'; btnU.style.fontSize='8px'; btnU.innerText = 'UNLOCKS';
@@ -3817,7 +4087,13 @@ function renderHeroes() {
             list.forEach(h => {
                 const has=SaveSystem.d.heroes.includes(h.id); const sel=SaveSystem.d.curHero===h.id;
                 const d=document.createElement('div'); d.className=`hero-slot ${has?'owned':'locked'} ${sel?'active':''}`;
-                d.innerHTML=`<img src="${(ASSETS['h_'+h.id])?ASSETS['h_'+h.id].src:''}" class="hero-img">`;
+                let eventBadgeHTML = '';
+                if(h.event) {
+                    const iconSrc = h.event.sprite && ASSETS[h.event.sprite] ? ASSETS[h.event.sprite].src : (ASSETS['icon_pumpkin'] ? ASSETS['icon_pumpkin'].src : '');
+                    const iconHTML = iconSrc ? `<img src="${iconSrc}">` : '&#9733;';
+                    eventBadgeHTML = `<div class="hero-event-badge" title="${h.event.title || 'EVENT'}: ${h.event.desc || ''}">${iconHTML}</div>`;
+                }
+                d.innerHTML=`${eventBadgeHTML}<img src="${(ASSETS['h_'+h.id])?ASSETS['h_'+h.id].src:''}" class="hero-img">`;
                 d.onclick = () => { AU.ui(); showDetail(h, has, 'hero'); };
                 row.appendChild(d);
             });
@@ -3846,10 +4122,15 @@ function renderHeroes() {
     if(actDisp) {
         const curH = HEROES.find(h => h.id === SaveSystem.d.curHero) || HEROES[0];
         const hImgSrc = ASSETS['h_' + curH.id] ? ASSETS['h_' + curH.id].src : '';
+        const evSrc = curH.event && (curH.event.sprite && ASSETS[curH.event.sprite] ? ASSETS[curH.event.sprite].src : (ASSETS['icon_pumpkin'] ? ASSETS['icon_pumpkin'].src : ''));
+        const curEventBadge = (curH.event && evSrc) ? `<span style="display:inline-flex; align-items:center; margin-left:4px;" title="${curH.event.desc}"><img src="${evSrc}" style="width:14px; height:14px; image-rendering:pixelated;"></span>` : '';
         actDisp.innerHTML = `
-            <img src="${hImgSrc}" style="width:40px; height:40px; image-rendering:pixelated; border:2px solid #ff2a6d; background:#1c1d33; padding:2px;">
+            <div style="position:relative; display:inline-block;">
+                <img src="${hImgSrc}" style="width:40px; height:40px; image-rendering:pixelated; border:2px solid #ff2a6d; background:#1c1d33; padding:2px;">
+                ${(curH.event && evSrc) ? `<div class="hero-event-badge" style="top:-3px; right:-3px;"><img src="${evSrc}"></div>` : ''}
+            </div>
             <div style="display:flex; flex-direction:column; gap:2px; font-size:8px;">
-                <span style="color:#fff; font-weight:bold; font-size:10px;">${curH.n}</span>
+                <span style="color:#fff; font-weight:bold; font-size:10px; display:flex; align-items:center;">${curH.n} ${curEventBadge}</span>
                 <span style="color:#05d9e8;">HP: ${curH.hp} | SPD: ${curH.spd}</span>
                 <span style="color:#00ff66;">SKILL: ${curH.abil.toUpperCase()}</span>
             </div>
@@ -3928,8 +4209,28 @@ function showDetail(item, owned, type, name) {
     if(type === 'hero') {
         const img = ASSETS['h_'+item.id].cloneNode(); img.className = 'big-preview';
         left.appendChild(img);
-        right.innerHTML = `<h2 style="color:${owned?'#fff':'#555'}">${item.n}</h2>
+
+        let eventBannerHTML = '';
+        if(item.event) {
+            const evImgSrc = item.event.sprite && ASSETS[item.event.sprite] ? ASSETS[item.event.sprite].src : (ASSETS['icon_pumpkin'] ? ASSETS['icon_pumpkin'].src : '');
+            const evIconHTML = evImgSrc ? `<img src="${evImgSrc}">` : '&#9733;';
+            eventBannerHTML = `
+                <div class="event-exclusive-banner">
+                    <div class="event-badge-icon">${evIconHTML}</div>
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <div class="event-banner-tag">&#9670; ${item.event.tag || 'EVENT EXCLUSIVE'} &#9670;</div>
+                        <div class="event-banner-desc">${item.event.desc}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const titleIconSrc = item.event && (item.event.sprite && ASSETS[item.event.sprite] ? ASSETS[item.event.sprite].src : (ASSETS['icon_pumpkin'] ? ASSETS['icon_pumpkin'].src : ''));
+        const titleBadgeHTML = titleIconSrc ? `<img src="${titleIconSrc}" style="width:20px; height:20px; image-rendering:pixelated;">` : '';
+
+        right.innerHTML = `<h2 style="color:${owned?'#fff':'#555'}; display:flex; align-items:center; gap:8px;">${item.n} ${titleBadgeHTML}</h2>
                            <div style="color:gold;margin-bottom:10px">${item.r.toUpperCase()}</div>
+                           ${eventBannerHTML}
                            <div style="font-size:10px;line-height:2">
                                <div>HP: ${item.hp}</div>
                                <div>SPEED: ${item.spd}</div>
@@ -3941,7 +4242,16 @@ function showDetail(item, owned, type, name) {
             btn.onclick = () => { AU.ui(); SaveSystem.d.curHero = item.id; SaveSystem.save(); renderHeroes(); ui.closeModal(); };
             right.appendChild(btn);
         } else {
-            right.innerHTML += `<div style="color:#f00;margin-top:20px">LOCKED</div>`;
+            if(item.event) {
+                right.innerHTML += `
+                    <div style="margin-top:16px; padding:10px; background:rgba(255, 42, 109, 0.15); border:2px dashed #ff2a6d;">
+                        <div style="color:#ff2a6d; font-weight:bold; font-size:10px; margin-bottom:4px;">EVENT LOCKED</div>
+                        <div style="color:#ffd700; font-size:8px; line-height:1.5;">${item.event.desc}. Reach Tier 10 in the Season Pass to unlock!</div>
+                    </div>
+                `;
+            } else {
+                right.innerHTML += `<div style="color:#f00;margin-top:20px">LOCKED</div>`;
+            }
         }
     } else if (type === 'armor') {
         const img = ASSETS[item.sprite].cloneNode(); 
@@ -4150,26 +4460,181 @@ function showDetail(item, owned, type, name) {
     }
 }
 
-// === AUTO-SAVE ON EXIT & TAB BACKGROUNDING ===
-(function () {
-    // Auto-save on visibility change or unload
-    window.addEventListener('beforeunload', () => {
-        if(GAME.on && GAME.p && GAME.p.hp > 0) {
-            GAME.saveRun(true);
-        } else {
-            SaveSystem.save(true);
+/* --- SEASON PASS SYSTEM --- */
+var SEASON_PASS = {
+    seasonName: "SEASON 1: GRAVEYARD HORRORS",
+    seasonTag: "MONTHLY PASS - 30 DAYS REMAINING",
+    tiers: [
+        { tier: 1, xpReq: 50, type: 'gold', val: 200, name: '200 Gold', icon: 'coin', desc: 'Starter War Chest' },
+        { tier: 2, xpReq: 120, type: 'gold', val: 350, name: '350 Gold', icon: 'coin', desc: 'Gold Cache' },
+        { tier: 3, xpReq: 220, type: 'wep', wepName: 'Axe', name: 'Axe Rank +1', icon: 'w_axe', desc: 'Free Axe Upgrade' },
+        { tier: 4, xpReq: 350, type: 'gold', val: 600, name: '600 Gold', icon: 'coin', desc: 'Hero Recruit Funds' },
+        { tier: 5, xpReq: 500, type: 'crate', name: 'Recruit Crate', icon: 'chest', desc: 'Free Hero Unlock Crate' },
+        { tier: 6, xpReq: 700, type: 'gold', val: 800, name: '800 Gold', icon: 'coin', desc: 'Treasury Bounty' },
+        { tier: 7, xpReq: 950, type: 'wep', wepName: 'Wand', name: 'Wand Rank +1', icon: 'w_wand', desc: 'Magic Wand Upgrade' },
+        { tier: 8, xpReq: 1250, type: 'gold', val: 1200, name: '1,200 Gold', icon: 'coin', desc: 'Royal Gold Stash' },
+        { tier: 9, xpReq: 1600, type: 'crate', name: 'Epic Crate', icon: 'chest', desc: 'Guaranteed Rare+ Hero' },
+        { tier: 10, xpReq: 2000, type: 'hero', heroId: 'skel_lord', name: 'SKELETON LORD', icon: 'h_skel_lord', desc: 'GRAND PRIZE: Legendary Hero! Summons a Skeleton Army to swarm enemies!' }
+    ]
+};
+
+function renderSeasonPass() {
+    const c = document.getElementById('pass-container');
+    if(!c) return;
+    c.innerHTML = '';
+
+    const currentXP = SaveSystem.d.passXP || 0;
+    const maxXP = SEASON_PASS.tiers[SEASON_PASS.tiers.length - 1].xpReq;
+    const claimedList = SaveSystem.d.passClaimed || [];
+
+    // Header Card
+    const header = document.createElement('div');
+    header.className = 'pass-header-card';
+    const pct = Math.min(100, Math.floor((currentXP / maxXP) * 100));
+
+    header.innerHTML = `
+        <div class="pass-banner-row">
+            <div class="pass-title-group">
+                <div class="pass-season-badge">${SEASON_PASS.seasonTag}</div>
+                <div class="pass-season-name">${SEASON_PASS.seasonName}</div>
+            </div>
+            <div class="pass-timer-pill">&#9733; CURRENT XP: ${currentXP} / ${maxXP}</div>
+        </div>
+        <div class="pass-bar-wrap">
+            <div class="pass-bar-fill" style="width:${pct}%"></div>
+            <div class="pass-bar-text">${currentXP} / ${maxXP} XP (${pct}%)</div>
+        </div>
+        <div style="font-size:8px; color:#aaa; line-height:1.5;">
+            Earn Season Pass XP by surviving arena runs, eliminating creeps, and defeating bosses! Complete all 10 tiers to recruit the legendary <span style="color:#ffd700;font-weight:bold">SKELETON LORD</span>!
+        </div>
+    `;
+    c.appendChild(header);
+
+    // Tiers Grid
+    const grid = document.createElement('div');
+    grid.className = 'pass-grid';
+
+    SEASON_PASS.tiers.forEach(t => {
+        const isUnlocked = currentXP >= t.xpReq;
+        const isClaimed = claimedList.includes(t.tier);
+        const isGrand = t.tier === 10;
+
+        const card = document.createElement('div');
+        card.className = `pass-tier-card ${isGrand ? 'grand-tier' : ''} ${isUnlocked ? 'unlocked' : ''} ${isClaimed ? 'claimed' : ''}`;
+
+        let iconHTML = '';
+        if(t.icon && ASSETS[t.icon]) {
+            iconHTML = `<img src="${ASSETS[t.icon].src}" style="width:36px; height:36px; image-rendering:pixelated; margin:6px 0; filter:drop-shadow(2px 2px 0 #000);">`;
         }
+
+        let btnHTML = '';
+        if(isClaimed) {
+            btnHTML = `<button class="btn pass-btn-claim" disabled style="background:#222;border-color:#555;color:#888;">CLAIMED &#10004;</button>`;
+        } else if(isUnlocked) {
+            btnHTML = `<button class="btn btn-green pass-btn-claim" onclick="claimSeasonTier(${t.tier})">CLAIM!</button>`;
+        } else {
+            btnHTML = `<button class="btn pass-btn-claim" disabled style="opacity:0.5;">LOCKED (${t.xpReq} XP)</button>`;
+        }
+
+        card.innerHTML = `
+            <div class="pass-tier-num">TIER ${t.tier}</div>
+            ${iconHTML}
+            <div class="pass-reward-name" style="${isGrand ? 'color:#ffd700; font-size:10px;' : ''}">${t.name}</div>
+            <div class="pass-reward-desc">${t.desc}</div>
+            ${btnHTML}
+        `;
+        grid.appendChild(card);
     });
-    
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'hidden') {
+
+    c.appendChild(grid);
+}
+
+function claimSeasonTier(tierNum) {
+    const t = SEASON_PASS.tiers.find(x => x.tier === tierNum);
+    if(!t) return;
+    const currentXP = SaveSystem.d.passXP || 0;
+    if(currentXP < t.xpReq) return;
+    if(!SaveSystem.d.passClaimed) SaveSystem.d.passClaimed = [];
+    if(SaveSystem.d.passClaimed.includes(tierNum)) return;
+
+    SaveSystem.d.passClaimed.push(tierNum);
+
+    if(t.type === 'gold') {
+        SaveSystem.d.gold += t.val;
+        AU.coin();
+        ui.toast(`CLAIMED: +${t.val} GOLD!`);
+    } else if (t.type === 'wep') {
+        if(!SaveSystem.d.weps) SaveSystem.d.weps = {};
+        SaveSystem.d.weps[t.wepName] = (SaveSystem.d.weps[t.wepName] || 0) + 1;
+        AU.ui();
+        ui.toast(`UPGRADED: ${t.wepName} RANK +1!`);
+    } else if (t.type === 'crate') {
+        ui.playCrateAnimation(() => {
+            SaveSystem.d.gold += 500;
+            ui.toast("FREE CRATE: +500 GOLD GRANTED!");
+        });
+    } else if (t.type === 'hero') {
+        if(!SaveSystem.d.heroes.includes(t.heroId)) {
+            SaveSystem.d.heroes.push(t.heroId);
+        }
+        SaveSystem.d.curHero = t.heroId;
+        AU.play(1200, 'sine', 0.4, 0.7);
+        ui.toast(`UNLOCKED: ${t.name}! LEGION SUMMONER READY!`);
+        renderHeroes();
+    }
+
+    SaveSystem.save();
+    renderSeasonPass();
+}
+
+// === AUTO-SAVE ON EXIT, CHROMEBOOK LID CLOSE & LIFECYCLE SUSPENSION ===
+(function () {
+    const triggerAutoSave = () => {
+        try {
             if(GAME.on && GAME.p && GAME.p.hp > 0) {
                 GAME.saveRun(true);
             } else {
                 SaveSystem.save(true);
             }
+        } catch (e) {
+            console.error("AutoSave error:", e);
+        }
+    };
+
+    // Standard unload and visibility listeners
+    window.addEventListener('beforeunload', triggerAutoSave);
+    window.addEventListener('unload', triggerAutoSave);
+    
+    // Pagehide is the standard W3C event fired on mobile and ChromeOS lid close
+    window.addEventListener('pagehide', triggerAutoSave);
+
+    // Chrome Lifecycle API 'freeze' event when ChromeOS suspends/hibernates background tabs on lid close
+    document.addEventListener('freeze', triggerAutoSave);
+
+    // Visibility change fires immediately when Chromebook lid is closed or tab is hidden
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') {
+            triggerAutoSave();
+            // Automatically pause running gameplay when lid is closed/tab hidden so player does not die while Chromebook is closed
+            if (GAME.on && !GAME.paused && GAME.p && GAME.p.hp > 0) {
+                GAME.paused = true;
+                const pauseOverlay = document.getElementById('pause-overlay');
+                if (pauseOverlay) pauseOverlay.classList.remove('hidden');
+            }
+        } else if (document.visibilityState === 'visible') {
+            // Re-sync and ensure freshest save is loaded if returning
+            SaveSystem.load(false);
+            if (renderBattleScreen) renderBattleScreen();
         }
     });
+
+    // Window blur (losing focus when closing lid or switching apps)
+    window.addEventListener('blur', triggerAutoSave);
+
+    // Periodic safety auto-save via standard setInterval (runs independently of requestAnimationFrame)
+    setInterval(() => {
+        triggerAutoSave();
+    }, 2000);
 
     const isTabCloseShortcut = (event) => {
         const key = (event.key || '').toLowerCase();
@@ -4182,7 +4647,7 @@ function showDetail(item, owned, type, name) {
         if (event.defaultPrevented) return;
         if (isTabCloseShortcut(event)) {
             // Best effort save before shortcut closes tab
-            SaveSystem.save();
+            triggerAutoSave();
         }
     });
 })();
@@ -4248,8 +4713,10 @@ var MenuBg = {
         if(!this.ctx) return;
         requestAnimationFrame(this.loop);
         
-        // Never render during active gameplay so it cannot appear on top or overlap
-        if(GAME.on) {
+        // Render during menus, and also while in card picking screens (starter draft, level-up, chests)
+        const lvlOverlay = document.getElementById('overlay-levelup');
+        const isCardPicking = lvlOverlay && !lvlOverlay.classList.contains('hidden');
+        if(GAME.on && !isCardPicking) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             return;
         }
@@ -4329,6 +4796,7 @@ window.onload=function() {
     SaveSystem.load(false); 
     renderBattleScreen();
     renderHeroes();
+    renderSeasonPass();
     IN.init();
     resizeGame();
     MenuBg.init();
