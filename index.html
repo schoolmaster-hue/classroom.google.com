@@ -195,8 +195,8 @@
         }
 
         .screen-slider { flex-grow: 1; overflow: hidden; position: relative; width: 100%; z-index: 15; }
-        .screens-container { display: flex; width: 500%; height: 100%; transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1); }
-        .menu-screen { width: 20%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 90px; position: relative; flex-shrink: 0; box-sizing: border-box; }
+        .screens-container { display: flex; width: 600%; height: 100%; transition: transform 0.35s cubic-bezier(0.2, 0.9, 0.3, 1); }
+        .menu-screen { width: 16.666%; height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; padding-bottom: 90px; position: relative; flex-shrink: 0; box-sizing: border-box; }
         
         /* TITLE SCREEN */
         #title-screen {
@@ -239,13 +239,110 @@
         }
         .nav-btn { 
             background: none; border: none; color: #6a7491; font-family: 'Press Start 2P'; 
-            font-size: 10px; cursor: pointer; text-align: center; width: 20%; height: 100%; 
+            font-size: 9px; cursor: pointer; text-align: center; width: 16.666%; height: 100%; 
             position: relative; transition: all 0.15s; letter-spacing: 0.5px;
             display: flex; align-items: center; justify-content: center;
         }
         .nav-btn:hover { color: #fff; background: rgba(255,255,255,0.03); }
         .nav-btn.active { color: var(--accent); background: #161729; text-shadow: 0 0 10px var(--accent-glow); }
-        .nav-indicator { position: absolute; top: -4px; left: 0; width: 20%; height: 4px; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); transition: left 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); z-index: 21; }
+        .nav-indicator { position: absolute; top: -4px; left: 0; width: 16.666%; height: 4px; background: var(--accent); box-shadow: 0 0 12px var(--accent-glow); transition: left 0.3s cubic-bezier(0.2, 0.9, 0.3, 1); z-index: 21; }
+
+        /* FORGE HUB STYLES */
+        .forge-container {
+            width: 94%; max-width: 960px; display: flex; flex-direction: column; gap: 16px; margin-top: 10px;
+        }
+        .forge-header-card {
+            background: linear-gradient(135deg, #2a110a 0%, #15090f 50%, #0d0f1a 100%);
+            border: 3px solid #ff5500; box-shadow: 0 0 25px rgba(255, 85, 0, 0.35), 4px 4px 0 #000;
+            padding: 16px 20px; display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden;
+        }
+        .forge-header-card::before {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, #ff0044, #ff8800, #ffd700, #ff8800, #ff0044);
+            animation: forgeHeatGlow 3s infinite linear;
+        }
+        @keyframes forgeHeatGlow {
+            0% { filter: hue-rotate(0deg) brightness(1); }
+            50% { filter: hue-rotate(20deg) brightness(1.4); }
+            100% { filter: hue-rotate(0deg) brightness(1); }
+        }
+        .forge-subnav {
+            display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 4px;
+        }
+        .forge-sub-btn {
+            background: #141624; border: 2px solid #3d4368; color: #8894b5;
+            font-family: 'Press Start 2P'; font-size: 8px; padding: 8px 14px; cursor: pointer;
+            transition: all 0.15s; letter-spacing: 0.5px;
+        }
+        .forge-sub-btn:hover { border-color: #ff8800; color: #fff; background: #201726; }
+        .forge-sub-btn.active {
+            border-color: #ff5500; color: #ffd700; background: #2b1212;
+            box-shadow: 0 0 12px rgba(255, 85, 0, 0.5), 2px 2px 0 #000;
+        }
+        
+        .forge-stage-card {
+            background: #121320; border: 3px solid #2d324d; padding: 18px;
+            display: flex; flex-direction: column; align-items: center; position: relative;
+            box-shadow: 4px 4px 0 #000;
+        }
+        .anvil-cinematic-stage {
+            width: 100%; height: 160px; background: radial-gradient(circle at 50% 60%, rgba(255,85,0,0.2) 0%, rgba(15,10,25,0.8) 70%);
+            border: 2px dashed #ff5500; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            position: relative; margin-bottom: 16px; overflow: hidden;
+        }
+        .anvil-icon-art {
+            width: 64px; height: 64px; image-rendering: pixelated; filter: drop-shadow(0 0 12px rgba(255,136,0,0.7));
+            transition: transform 0.1s;
+        }
+        .anvil-icon-art.hammering {
+            animation: anvilImpact 0.4s 3 ease-in-out;
+        }
+        @keyframes anvilImpact {
+            0% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 8px #ff8800); }
+            50% { transform: scale(1.15) translateY(-8px); filter: drop-shadow(0 0 25px #ffd700) brightness(1.5); }
+            100% { transform: scale(0.95) translateY(2px); filter: drop-shadow(0 0 10px #ff0044); }
+        }
+        .forge-sparks-canvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;
+        }
+
+        .forge-grid-items {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; width: 100%;
+        }
+        .forge-recipe-card {
+            background: linear-gradient(180deg, #18192d 0%, #101120 100%);
+            border: 3px solid #3d4368; padding: 12px; display: flex; flex-direction: column;
+            gap: 10px; position: relative; box-shadow: 3px 3px 0 #000; transition: border-color 0.15s, transform 0.15s;
+        }
+        .forge-recipe-card:hover {
+            border-color: #ff8800; transform: translateY(-2px); box-shadow: 4px 4px 0 #000, 0 0 15px rgba(255,136,0,0.3);
+        }
+        .forge-recipe-card.crafted {
+            border-color: #00ff66; background: linear-gradient(180deg, #13241b 0%, #0d1712 100%);
+        }
+        .forge-recipe-header {
+            display: flex; align-items: center; gap: 12px;
+        }
+        .forge-recipe-img {
+            width: 44px; height: 44px; image-rendering: pixelated; background: #0c0d18;
+            border: 2px solid #555; padding: 4px; box-sizing: border-box; filter: drop-shadow(2px 2px 0 #000);
+        }
+        .forge-req-row {
+            display: flex; gap: 6px; flex-wrap: wrap; background: rgba(0,0,0,0.4); padding: 6px; border: 1px solid #2d324d;
+        }
+        .forge-req-pill {
+            font-size: 7.5px; padding: 3px 6px; border-radius: 2px; display: flex; align-items: center; gap: 4px;
+        }
+        .forge-req-pill.met { background: rgba(0,255,102,0.15); color: #00ff66; border: 1px solid #00ff66; }
+        .forge-req-pill.unmet { background: rgba(255,68,68,0.15); color: #ff6666; border: 1px solid #ff4444; }
+
+        .forge-ench-row {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 8px 12px; background: #15172b; border: 2px solid #2d324d; margin-bottom: 8px; width: 100%; box-sizing: border-box;
+        }
+        .forge-stat-tier {
+            display: flex; gap: 4px; font-size: 9px; color: #ffd700;
+        }
 
         /* SEASON PASS STYLES */
         .pass-container { width: 92%; max-width: 900px; display: flex; flex-direction: column; gap: 16px; margin-top: 10px; }
@@ -702,6 +799,7 @@
         <div class="persistent-header">
             <div style="display:flex; align-items:center; gap:16px;">
                 <div id="header-gold" style="color:var(--gold); font-size:12px; text-shadow:1px 1px 0 #000, 0 0 8px var(--gold-glow);">&#9733; GOLD: 0</div>
+                <div id="header-scrap" style="color:#ff8800; font-size:12px; text-shadow:1px 1px 0 #000, 0 0 8px rgba(255,136,0,0.6);">&#9874; SCRAP: 0</div>
                 <div id="header-kills" style="color:var(--accent); font-size:12px; text-shadow:1px 1px 0 #000, 0 0 8px var(--accent-glow);">&#9760; KILLS: 0</div>
             </div>
             <div id="header-save-indicator" style="font-size:9px; color:var(--green); text-shadow:0 0 8px var(--green-glow); display:flex; align-items:center; gap:6px;">
@@ -744,6 +842,11 @@
                     <div class="loadout-grid" id="loadout-grid"></div>
                 </div>
 
+                <div class="menu-screen" id="tab-forge">
+                    <h1>THE FORGE</h1>
+                    <div class="forge-container" id="forge-container"></div>
+                </div>
+
                 <div class="menu-screen" id="tab-pass">
                     <h1>SEASON PASS</h1>
                     <div class="pass-container" id="pass-container"></div>
@@ -781,9 +884,10 @@
             <div class="nav-indicator" id="nav-ind"></div>
             <button class="nav-btn active" onclick="ui.switchTab(0)">BATTLE</button>
             <button class="nav-btn" onclick="ui.switchTab(1)">HEROES</button>
-            <button class="nav-btn" onclick="ui.switchTab(2)">LOADOUT</button>
-            <button class="nav-btn" onclick="ui.switchTab(3)">PASS</button>
-            <button class="nav-btn" onclick="ui.switchTab(4)">SETTINGS</button>
+            <button class="nav-btn" onclick="ui.switchTab(2)">ARMORY</button>
+            <button class="nav-btn" onclick="ui.switchTab(3)">FORGE</button>
+            <button class="nav-btn" onclick="ui.switchTab(4)">PASS</button>
+            <button class="nav-btn" onclick="ui.switchTab(5)">SETTINGS</button>
         </div>
     </div>
 
@@ -1559,6 +1663,82 @@ var SPRITES = {
         "_kYyykkyyYk_",
         "_kYyyyyyyYk_",
         "__kYYYYYYk__"
+    ],
+    forge_anvil: [
+        "__kmmmmmmmmk__",
+        "_kssssssssssk_",
+        "kssmmmmmmmmssk",
+        "_kssmmmmmmk___",
+        "___kmmmmk_____",
+        "___kmggmk_____",
+        "__kmssssmk____",
+        "_kmssssssmk___",
+        "kmmmmmmmmmmk__",
+        "kkkkkkkkkkkk__"
+    ],
+    forge_hammer: [
+        "______kmmk____",
+        "_____kssssk___",
+        "____kssssssk__",
+        "___ksskkkssk__",
+        "____k_kt_k____",
+        "______kt______",
+        "_____kt_______",
+        "____ktt_______",
+        "___ktt________",
+        "__kk__________"
+    ],
+    icon_scrap: [
+        "___ksssk___",
+        "__kssmssk__",
+        "_kssmddssk_",
+        "ksmddddmsk_",
+        "_ksmddmssk_",
+        "__kssmssk__",
+        "___ksssk___"
+    ],
+    // FORGED WEAPON SPRITES
+    w_inferno: [
+        "____kRRk____",
+        "___kRooRk___",
+        "__kRooooRk__",
+        "_kRrooYYrrk_",
+        "_kRroYYyyrk_",
+        "__kRrrrrRk__",
+        "___kRRRRk___",
+        "____kddk____",
+        "____kddk____",
+        "_____kk_____"
+    ],
+    w_vortex: [
+        "___kCCk___",
+        "__kCccCk__",
+        "_kC8888Ck_",
+        "kC88ww88Ck",
+        "kCcw88wcCk",
+        "_kC8888Ck_",
+        "__kCccCk__",
+        "___kCCk___"
+    ],
+    w_thunder: [
+        "___kYYk___",
+        "__kYyyYk__",
+        "_kYyyyyYk_",
+        "__kYYyyk__",
+        "___kYyyk__",
+        "__kYYyyk__",
+        "_kYyyyyYk_",
+        "__kYyyYk__",
+        "___kYYk___"
+    ],
+    w_eclipse: [
+        "___k444k___",
+        "__k4RRR4k__",
+        "_k4RkkkR4k_",
+        "_k4Rk99R4k_",
+        "_k4RkkkR4k_",
+        "__k4RRR4k__",
+        "___k444k___"
     ]
 };
 
@@ -1730,6 +1910,12 @@ var WEAPONS = {
 
     'Skull Ring': { sprite:'w_skull', type:'orb', dmg:12, amt:1, rarity:'legend', d_cd:['+1 Orb','+10 Spd','+1 Orb','+5 Dmg','DEMON'] },
     'Dark Magic': { sprite:'w_dark', type:'aura', dmg:3, cd:30, amt:1, rarity:'legend', d_cd:['+20 Area','+2 Dmg','+20 Area','+3 Dmg','DEMON'] },
+    
+    // FORGED WEAPONS (Crafted in The Forge)
+    'Inferno Blades': { sprite:'w_inferno', type:'dir', dmg:22, cd:14, amt:2, rarity:'legend', forged:true, d_cd:['+1 Pierce','+8 Dmg','+1 Proj','-4 CD','DEMON'] },
+    'Void Vortex': { sprite:'w_vortex', type:'zone', dmg:18, cd:75, amt:1, rarity:'legend', forged:true, d_cd:['+30 Area','+6 Dmg','+2 Dur','-15 CD','DEMON'] },
+    'Thunder Claws': { sprite:'w_thunder', type:'strike', dmg:65, cd:60, amt:2, rarity:'legend', forged:true, d_cd:['+1 Strike','+25 Dmg','+1 Strike','-15 CD','DEMON'] },
+    'Eclipse Scythe': { sprite:'w_eclipse', type:'melee', dmg:32, cd:4, amt:2, rarity:'legend', forged:true, d_cd:['+15 Dmg','+30 Area','+1 Orb','+3s Dur','DEMON'] }
 };
 
 var ARMORS = {
@@ -1830,6 +2016,9 @@ function calculateArmorStats(armorId, targetLevel) {
 }
 
 function isWepUnlocked(name) {
+    if(WEAPONS[name] && WEAPONS[name].forged) {
+        return !!(SaveSystem.d.forged && SaveSystem.d.forged[name]);
+    }
     for(let m of MAPS) {
         if(m.id <= parseInt(SaveSystem.d.unlockedMaps)) {
             if(m.u.some(u => u.n === name)) return true;
@@ -1874,7 +2063,7 @@ var AU = {
 
 /* --- SAVES SYSTEM --- */
 var SaveSystem = {
-    d: { signature: 'PSA_REL_V1', gold:0, kills:0, unlockedMaps:1, heroes:['warlock'], curHero:'warlock', weps:{}, armors:{}, curArmor:null, vol:true, aim:false, runData:null, selMap: 1, passXP: 0, passClaimed: [] },
+    d: { signature: 'PSA_REL_V1', gold:0, scrap:0, kills:0, unlockedMaps:1, heroes:['warlock'], curHero:'warlock', weps:{}, armors:{}, forged:{}, enchants:{}, curArmor:null, vol:true, aim:false, runData:null, selMap: 1, passXP: 0, passClaimed: [] },
     save: function(silent=false) { 
         this.d.signature = 'PSA_REL_V1'; 
         localStorage.setItem('psv5', JSON.stringify(this.d)); 
@@ -1898,6 +2087,9 @@ var SaveSystem = {
             } catch(e){} 
         }
         if (typeof this.d.vol === 'undefined') this.d.vol = true;
+        if (typeof this.d.scrap === 'undefined') this.d.scrap = 0;
+        if (!this.d.forged) this.d.forged = {};
+        if (!this.d.enchants) this.d.enchants = {};
         if (!this.d.armors) this.d.armors = {};
         if (typeof this.d.passXP === 'undefined') this.d.passXP = 0;
         if (!this.d.passClaimed) this.d.passClaimed = [];
@@ -1927,7 +2119,7 @@ var SaveSystem = {
             if(titleStart) titleStart.innerText = "START GAME";
             if(autoStatus) {
                 if(loadedSuccessfully) {
-                    autoStatus.innerHTML = `<span style="color:#00ff66">&#9679;</span> AUTO-SAVE: BROWSER DATA LOADED (${this.d.gold}G / ${this.d.kills} KILLS)`;
+                    autoStatus.innerHTML = `<span style="color:#00ff66">&#9679;</span> AUTO-SAVE: BROWSER DATA LOADED (${this.d.gold}G / ${this.d.scrap || 0} SCRAP / ${this.d.kills} KILLS)`;
                 } else {
                     autoStatus.innerHTML = `<span style="color:#05d9e8">&#9679;</span> READY: NEW ADVENTURE READY TO AUTO-SAVE`;
                 }
@@ -1945,12 +2137,15 @@ var SaveSystem = {
     export: function() { 
         const m = {
             g: this.d.gold,
+            sc: this.d.scrap || 0,
             k: this.d.kills,
             u: this.d.unlockedMaps,
             h: this.d.heroes,
             c: this.d.curHero,
             w: this.d.weps,
             a: this.d.armors,
+            fg: this.d.forged || {},
+            en: this.d.enchants || {},
             ca: this.d.curArmor,
             r: this.d.runData,
             px: this.d.passXP || 0,
@@ -1971,12 +2166,15 @@ var SaveSystem = {
     exportFromTitle: function() {
         const m = {
             g: this.d.gold,
+            sc: this.d.scrap || 0,
             k: this.d.kills,
             u: this.d.unlockedMaps,
             h: this.d.heroes,
             c: this.d.curHero,
             w: this.d.weps,
             a: this.d.armors,
+            fg: this.d.forged || {},
+            en: this.d.enchants || {},
             ca: this.d.curArmor,
             r: this.d.runData,
             px: this.d.passXP || 0,
@@ -2009,12 +2207,15 @@ var SaveSystem = {
             try {
                 const m = JSON.parse(atob(v.substring(4)));
                 this.d.gold = m.g ?? this.d.gold;
+                this.d.scrap = m.sc ?? (this.d.scrap || 0);
                 this.d.kills = m.k ?? this.d.kills;
                 this.d.unlockedMaps = m.u ?? this.d.unlockedMaps;
                 this.d.heroes = m.h ?? this.d.heroes;
                 this.d.curHero = m.c ?? this.d.curHero;
                 this.d.weps = m.w ?? this.d.weps;
                 this.d.armors = m.a ?? (this.d.armors || {});
+                this.d.forged = m.fg ?? (this.d.forged || {});
+                this.d.enchants = m.en ?? (this.d.enchants || {});
                 this.d.curArmor = m.ca ?? this.d.curArmor;
                 this.d.runData = m.r ?? null;
                 this.d.passXP = m.px ?? (this.d.passXP || 0);
@@ -2025,6 +2226,7 @@ var SaveSystem = {
                 renderBattleScreen();
                 renderHeroes(); 
                 renderSeasonPass();
+                if(typeof renderForge === 'function') renderForge();
                 if(ui) ui.startGame();
             } catch(e) { ui.toast("CORRUPT SAVE KEY"); }
         } else {
@@ -2037,6 +2239,7 @@ var SaveSystem = {
                 GAME.selMap = this.d.selMap || 1; 
                 renderBattleScreen();
                 renderHeroes();
+                if(typeof renderForge === 'function') renderForge();
                 if(ui) ui.startGame();
             } catch(e) { ui.toast("INVALID SAVE KEY"); }
         }
@@ -2049,6 +2252,8 @@ var SaveSystem = {
     },
     upd: function() { 
         document.querySelectorAll('#coin-display, #shop-coins, #armory-gold, #header-gold').forEach(e=>e.innerText = `GOLD: ${this.d.gold}`);
+        const scrapEls = document.querySelectorAll('#header-scrap, #forge-scrap-count');
+        scrapEls.forEach(e => e.innerText = `SCRAP: ${this.d.scrap || 0}`);
         const killEl = document.getElementById('header-kills');
         if(killEl) killEl.innerText = `KILLS: ${this.d.kills}`;
         const togSfx = document.getElementById('tog-sfx');
@@ -2340,7 +2545,8 @@ class Enemy extends Ent {
                 
                 if(r < 0.015) GAME.drop('magnet',this.x,this.y); 
                 else if(r < 0.015 + heartChance) GAME.drop('heart',this.x,this.y,15); 
-                else if(r < 0.15) GAME.drop('coin', this.x, this.y, 10); 
+                else if(r < 0.12) GAME.drop('coin', this.x, this.y, 10); 
+                else if(r < 0.19) GAME.drop('scrap', this.x, this.y, 1); 
                 else {
                     let type = 'xp_b', val = 1;
                     const randXP = Math.random();
@@ -2367,6 +2573,15 @@ class Wep {
         if(globalLvl > 0) {
             this.stats.dmg *= (1 + globalLvl * 0.3); 
             this.stats.cd *= (1 - globalLvl * 0.05); 
+        }
+
+        // FORGE ENCHANTMENT BONUSES: Overclocking, Hyperfire, Colossus, Multi-Gem
+        if(SaveSystem.d.enchants && SaveSystem.d.enchants[n]) {
+            const ench = SaveSystem.d.enchants[n];
+            if(ench.dmg) this.stats.dmg *= (1 + ench.dmg * 0.25);
+            if(ench.cd) this.stats.cd *= Math.max(0.4, 1 - ench.cd * 0.12);
+            if(ench.area) this.stats.area = (this.stats.area || 1) + ench.area * 0.35;
+            if(ench.amt) this.stats.amt += ench.amt;
         }
     }
     levelUp() {
@@ -2476,10 +2691,11 @@ class Pickup extends Ent {
             x = Math.cos(angle) * 1400;
             y = Math.sin(angle) * 1400;
         }
-        super(x,y,t); this.type=t; this.val=v; 
+        const sprKey = (t==='scrap') ? 'icon_scrap' : t;
+        super(x,y,sprKey); this.type=t; this.val=v; 
         this.pulse = Math.random() * 6.28;
         if(t==='magnet' || t==='heart' || t==='chest') { this.w=32; this.h=32; } 
-        else if (t==='coin') { this.w=24; this.h=24; } 
+        else if (t==='coin' || t==='scrap') { this.w=24; this.h=24; } 
         else { this.w=24; this.h=24; }
     } 
     draw(ctx, cx, cy) {
@@ -2662,7 +2878,7 @@ var GAME = {
             
             this.es=[]; this.ps=[]; this.projs=[]; this.enemyProjs=[]; this.boss=[]; this.allies=[]; this.particles=[]; this.dmgNums=[]; this.shockwaves=[];
             this.time=0; this.frame=0; this.on=true; this.paused=false; this.combo=0;
-            this.gold = 0; this.kills = 0; this.lastTime = 0;
+            this.gold = 0; this.scrap = 0; this.kills = 0; this.lastTime = 0;
             requestAnimationFrame(this.loop);
 
             // Present starter draft card choice!
@@ -3002,6 +3218,12 @@ var GAME = {
                         GAME.dmg(`+${Math.floor(healAmt)} HP`, GAME.p.x, GAME.p.y-30, '#0f0', true); 
                     }
                     else if(p.type==='coin') { GAME.gold+=p.val; AU.coin(); GAME.dmg(`+${p.val}G`, GAME.p.x, GAME.p.y-30, '#ffd700', false); }
+                    else if(p.type==='scrap') { 
+                        if(typeof GAME.scrap === 'undefined') GAME.scrap = 0;
+                        GAME.scrap += p.val; 
+                        AU.play(950, 'triangle', 0.1, 0.4); 
+                        GAME.dmg(`+${p.val} SCRAP`, GAME.p.x, GAME.p.y-30, '#ff9900', false); 
+                    }
                     else { GAME.p.gain(p.val); AU.coin(); document.getElementById('xp-bar').style.filter='brightness(1.5)'; setTimeout(()=>document.getElementById('xp-bar').style.filter='none', 100); }
                 }
             });
@@ -3500,6 +3722,7 @@ var GAME = {
                 GAME.paused = false;
                 ui.startTransition(() => {
                     SaveSystem.d.gold += GAME.gold;
+                    SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + (GAME.scrap || 0);
                     SaveSystem.d.kills += GAME.kills;
                     SaveSystem.d.runData = null;
                     SaveSystem.save();
@@ -3509,6 +3732,7 @@ var GAME = {
                 });
             } else {
                 SaveSystem.d.gold += GAME.gold;
+                SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + (GAME.scrap || 0);
                 SaveSystem.d.kills += GAME.kills;
                 SaveSystem.d.runData = null;
                 SaveSystem.save();
@@ -3522,12 +3746,13 @@ var GAME = {
     over: function() { 
         GAME.on=false; 
         SaveSystem.d.gold+=GAME.gold; 
+        SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + (GAME.scrap || 0);
         SaveSystem.d.kills+=GAME.kills; 
         const earnedPassXP = Math.floor(GAME.kills * 1.5) + Math.floor(GAME.time / 2);
         SaveSystem.d.passXP = (SaveSystem.d.passXP || 0) + earnedPassXP;
         SaveSystem.d.runData = null; // Run over
         SaveSystem.save(); 
-        document.getElementById('go-stats').innerText=`KILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}\nSEASON PASS XP: +${earnedPassXP}`; 
+        document.getElementById('go-stats').innerText=`KILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}\nFORGE SCRAP: +${GAME.scrap || 0}\nSEASON PASS XP: +${earnedPassXP}`; 
         document.getElementById('overlay-gameover').classList.remove('hidden'); 
     },
     
@@ -3535,6 +3760,7 @@ var GAME = {
         if(SaveSystem.d.unlockedMaps < 5 && GAME.map.id === SaveSystem.d.unlockedMaps) SaveSystem.d.unlockedMaps++;
         GAME.on=false; 
         SaveSystem.d.gold+=GAME.gold; 
+        SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + (GAME.scrap || 0) + 10; // 10 Bonus scrap for victory!
         SaveSystem.d.kills+=GAME.kills; 
         const earnedPassXP = Math.floor(GAME.kills * 1.5) + Math.floor(GAME.time / 2) + 200; // 200 Bonus XP for Victory
         SaveSystem.d.passXP = (SaveSystem.d.passXP || 0) + earnedPassXP;
@@ -3542,7 +3768,7 @@ var GAME = {
         SaveSystem.save(); 
         document.getElementById('go-title').innerText = "VICTORY!";
         document.getElementById('go-title').style.color = "#0f0";
-        document.getElementById('go-stats').innerText=`MAP CLEARED!\nKILLS: ${GAME.kills}\nGOLD EARNED: ${GAME.gold}\nSEASON PASS XP: +${earnedPassXP} (VICTORY BONUS!)`; 
+        document.getElementById('go-stats').innerText=`MAP CLEARED!\nKILLS: ${GAME.kills}\nGOLD: +${GAME.gold} | FORGE SCRAP: +${(GAME.scrap || 0) + 10}\nSEASON PASS XP: +${earnedPassXP} (VICTORY BONUS!)`; 
         document.getElementById('overlay-gameover').classList.remove('hidden'); 
     },
     buyHero: function() {
@@ -3901,12 +4127,14 @@ var ui = {
     switchTab: function(idx) {
         AU.ui(); 
         document.querySelectorAll('.nav-btn').forEach((b, i) => { if(i===idx) b.classList.add('active'); else b.classList.remove('active'); });
-        document.getElementById('nav-ind').style.left = (idx*20)+'%';
-        document.getElementById('screens-container').style.transform = `translateX(-${idx*20}%)`;
+        const step = 100 / 6;
+        document.getElementById('nav-ind').style.left = (idx * step) + '%';
+        document.getElementById('screens-container').style.transform = `translateX(-${idx * step}%)`;
         if(idx===0) renderBattleScreen(); 
         if(idx===1) renderHeroes(); 
         if(idx===2) renderLoadout();
-        if(idx===3) renderSeasonPass();
+        if(idx===3) renderForge();
+        if(idx===4) renderSeasonPass();
     },
     toastTimer: null,
     toast: function(msg) {
@@ -4198,6 +4426,47 @@ function renderLoadout() {
         group.appendChild(row);
         c.appendChild(group);
     });
+
+    // DISPLAY FORGED WEAPONS GROUP
+    const forgedKeys = Object.keys(WEAPONS).filter(k => WEAPONS[k].forged);
+    if(forgedKeys.length > 0) {
+        const fGroup = document.createElement('div'); fGroup.className = 'map-weps-group';
+        fGroup.innerHTML = `<div class="map-weps-title" style="color:#ff8800; border-left:4px solid #ff5500;">&#9874; ROYAL FORGE: MASTERWORK WEAPONS</div>`;
+        const fRow = document.createElement('div'); fRow.className = 'weps-row';
+        forgedKeys.forEach(itemKey => {
+            const data = WEAPONS[itemKey];
+            const unlocked = !!(SaveSystem.d.forged && SaveSystem.d.forged[itemKey]);
+            const lvl = SaveSystem.d.weps[itemKey] || 0;
+            const d = document.createElement('div'); 
+            d.className = `wep-card ${unlocked ? 'unlocked' : 'locked'} rarity-${data.rarity}`;
+            const src = ASSETS[data.sprite] ? ASSETS[data.sprite].src : '';
+
+            let statusText = "FORGE LOCKED";
+            let statusColor = "#666";
+            if(unlocked) {
+                if(lvl === 5) { statusText = "MAX RANK"; statusColor = "#ffd700"; }
+                else if(lvl > 0) { statusText = `RANK ${lvl}`; statusColor = "#00ff66"; }
+                else { statusText = "FORGED"; statusColor = "#ff8800"; }
+            }
+
+            d.innerHTML = `
+                <div class="wep-img-wrap"><img src="${src}" class="wep-img"></div>
+                <div class="wep-name" style="color:${unlocked?'#fff':'#666'}">${itemKey}</div>
+                <div class="rarity-tag" style="color:#ffd700;">FORGED LEGEND</div>
+                <div class="type-badge-pill type-badge-weapon">&#9876; WEAPON</div>
+                <div class="wep-status-pill" style="color:${statusColor}">${statusText}</div>`;
+            
+            d.onclick = () => { 
+                AU.ui(); 
+                ui.selectedWep = itemKey; 
+                renderLoadout(); 
+                showDetail(data, unlocked, 'weapon', itemKey); 
+            };
+            fRow.appendChild(d);
+        });
+        fGroup.appendChild(fRow);
+        c.appendChild(fGroup);
+    }
 }
 
 function showDetail(item, owned, type, name) {
@@ -4458,6 +4727,444 @@ function showDetail(item, owned, type, name) {
              right.innerHTML += `<div style="color:#aaa;font-size:8px">Unlock in Battle to upgrade</div>`;
         }
     }
+}
+
+/* --- THE FORGE SYSTEM --- */
+var FORGE = {
+    curSection: 'recipes', // 'recipes' | 'enchant' | 'salvage'
+    recipes: [
+        {
+            id: 'Inferno Blades',
+            n: 'Inferno Blades',
+            desc: 'Dual blazing daggers that pierce foes and ignite target areas with burning fireballs.',
+            sprite: 'w_inferno',
+            reqGold: 800,
+            reqScrap: 15,
+            reqWeps: [{ name: 'Daggers', minRank: 2 }, { name: 'Fire Staff', minRank: 1 }]
+        },
+        {
+            id: 'Void Vortex',
+            n: 'Void Vortex',
+            desc: 'Conjures gravitational void zones that crush enemies and inflict relentless ticking damage.',
+            sprite: 'w_vortex',
+            reqGold: 1000,
+            reqScrap: 20,
+            reqWeps: [{ name: 'Holy Water', minRank: 2 }, { name: 'Dark Magic', minRank: 1 }]
+        },
+        {
+            id: 'Thunder Claws',
+            n: 'Thunder Claws',
+            desc: 'Strikes down dual high-voltage thunderbolts from the heavens simultaneously.',
+            sprite: 'w_thunder',
+            reqGold: 1200,
+            reqScrap: 25,
+            reqWeps: [{ name: 'Lightning', minRank: 2 }, { name: 'Axe', minRank: 2 }]
+        },
+        {
+            id: 'Eclipse Scythe',
+            n: 'Eclipse Scythe',
+            desc: 'Twin spinning crescent blades orbiting at high velocity that slice through hordes.',
+            sprite: 'w_eclipse',
+            reqGold: 1500,
+            reqScrap: 30,
+            reqWeps: [{ name: 'Buzzsaw', minRank: 2 }, { name: 'Skull Ring', minRank: 1 }]
+        }
+    ],
+    enchants: [
+        { id: 'dmg', name: 'OVERCLOCK MIGHT', desc: '+25% Weapon Damage', costScrap: 12, costGold: 400, maxTier: 3 },
+        { id: 'cd', name: 'HYPERFIRE TRIGGER', desc: '-12% Weapon Cooldown', costScrap: 10, costGold: 350, maxTier: 3 },
+        { id: 'area', name: 'COLOSSUS RADIUS', desc: '+35% Blast / Hit Radius', costScrap: 10, costGold: 300, maxTier: 3 },
+        { id: 'amt', name: 'MULTI-GEM CHAMBER', desc: '+1 Bonus Projectile / Orb', costScrap: 20, costGold: 700, maxTier: 2 }
+    ]
+};
+
+function setForgeSection(sec) {
+    FORGE.curSection = sec;
+    AU.ui();
+    renderForge();
+}
+
+function playAnvilAnimation(onComplete) {
+    const anvilImg = document.getElementById('forge-anvil-img');
+    const cvs = document.getElementById('forge-sparks-cvs');
+    if(!anvilImg) { if(onComplete) onComplete(); return; }
+    
+    anvilImg.classList.add('hammering');
+    AU.play(180, 'square', 0.15, 0.6); // Deep anvil clink
+    AU.play(600, 'triangle', 0.2, 0.5);
+
+    let sparkAnim = true;
+    let sparks = [];
+    if(cvs) {
+        cvs.width = cvs.clientWidth || 300;
+        cvs.height = cvs.clientHeight || 150;
+        const ctx = cvs.getContext('2d');
+        const cx = cvs.width / 2;
+        const cy = cvs.height / 2 + 10;
+        for(let i = 0; i < 45; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const spd = Math.random() * 6 + 2;
+            sparks.push({
+                x: cx, y: cy,
+                vx: Math.cos(angle) * spd,
+                vy: Math.sin(angle) * spd - 2,
+                sz: Math.random() * 3 + 1,
+                c: ['#ffdd00', '#ff8800', '#ff2a6d', '#ffffff'][Math.floor(Math.random() * 4)],
+                life: 25 + Math.random() * 20
+            });
+        }
+        const loop = () => {
+            if(!sparkAnim || !ctx) return;
+            ctx.clearRect(0, 0, cvs.width, cvs.height);
+            sparks.forEach(s => {
+                s.x += s.vx; s.y += s.vy; s.vy += 0.2; s.life--;
+                ctx.fillStyle = s.c;
+                ctx.fillRect(s.x, s.y, s.sz, s.sz);
+            });
+            sparks = sparks.filter(s => s.life > 0);
+            if(sparks.length > 0) requestAnimationFrame(loop);
+        };
+        requestAnimationFrame(loop);
+    }
+
+    setTimeout(() => {
+        AU.play(220, 'square', 0.18, 0.7);
+        AU.play(900, 'sine', 0.25, 0.6);
+    }, 400);
+
+    setTimeout(() => {
+        AU.play(260, 'square', 0.2, 0.8);
+        AU.play(1200, 'sine', 0.35, 0.7);
+        anvilImg.classList.remove('hammering');
+        sparkAnim = false;
+        if(onComplete) onComplete();
+    }, 1100);
+}
+
+function renderForge() {
+    const c = document.getElementById('forge-container');
+    if(!c) return;
+    c.innerHTML = '';
+
+    if(!SaveSystem.d.forged) SaveSystem.d.forged = {};
+    if(!SaveSystem.d.enchants) SaveSystem.d.enchants = {};
+    if(typeof SaveSystem.d.scrap === 'undefined') SaveSystem.d.scrap = 0;
+
+    // Header Card with Anvil Visual & Scrap Counters
+    const header = document.createElement('div');
+    header.className = 'forge-header-card';
+    
+    const anvilSrc = ASSETS['forge_anvil'] ? ASSETS['forge_anvil'].src : '';
+    const hammerSrc = ASSETS['forge_hammer'] ? ASSETS['forge_hammer'].src : '';
+    const scrapSrc = ASSETS['icon_scrap'] ? ASSETS['icon_scrap'].src : '';
+
+    header.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <img src="${anvilSrc}" style="width:48px; height:48px; image-rendering:pixelated; filter:drop-shadow(0 0 10px rgba(255,85,0,0.6));">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <span style="font-size:16px; color:#ffd700; text-shadow:2px 2px 0 #000, 0 0 15px rgba(255,136,0,0.7);">ROYAL BLACKSMITH FORGE</span>
+                    <span style="font-size:8px; color:#ff8800; letter-spacing:1px;">FUSE WEAPONS &#9670; ENCHANT GEAR &#9670; SMELT SALVAGE</span>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:16px; background:rgba(10,12,22,0.85); padding:8px 16px; border:2px solid #3d4368; box-shadow:3px 3px 0 #000;">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <img src="${scrapSrc}" style="width:20px; height:20px; image-rendering:pixelated;">
+                    <span id="forge-scrap-count" style="font-size:11px; color:#ff9900; font-weight:bold; text-shadow:1px 1px 0 #000;">SCRAP: ${SaveSystem.d.scrap}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span style="color:#ffd700; font-size:12px;">&#9733;</span>
+                    <span style="font-size:11px; color:#ffd700; font-weight:bold; text-shadow:1px 1px 0 #000;">GOLD: ${SaveSystem.d.gold}</span>
+                </div>
+            </div>
+        </div>
+        <div class="forge-subnav">
+            <button class="forge-sub-btn ${FORGE.curSection==='recipes'?'active':''}" onclick="setForgeSection('recipes')">&#9874; WEAPON FUSION (${FORGE.recipes.length})</button>
+            <button class="forge-sub-btn ${FORGE.curSection==='enchant'?'active':''}" onclick="setForgeSection('enchant')">&#9733; OVERCLOCK ENCHANTS</button>
+            <button class="forge-sub-btn ${FORGE.curSection==='salvage'?'active':''}" onclick="setForgeSection('salvage')">&#9851; SALVAGE &amp; REFORGE</button>
+        </div>
+    `;
+    c.appendChild(header);
+
+    // Interactive Animated Anvil Cinematic Stage
+    const stageCard = document.createElement('div');
+    stageCard.className = 'forge-stage-card';
+    stageCard.innerHTML = `
+        <div class="anvil-cinematic-stage">
+            <canvas class="forge-sparks-canvas" id="forge-sparks-cvs"></canvas>
+            <img id="forge-anvil-img" class="anvil-icon-art" src="${anvilSrc}">
+            <div id="forge-stage-text" style="font-size:9px; color:#ffd700; margin-top:8px; letter-spacing:1px; text-shadow:1px 1px 0 #000;">THE EMBERS ARE GLOWING HOT</div>
+        </div>
+    `;
+
+    // Render Sub-Section Content
+    const contentArea = document.createElement('div');
+    contentArea.style.width = '100%';
+
+    if(FORGE.curSection === 'recipes') {
+        renderForgeRecipes(contentArea);
+    } else if (FORGE.curSection === 'enchant') {
+        renderForgeEnchants(contentArea);
+    } else if (FORGE.curSection === 'salvage') {
+        renderForgeSalvage(contentArea);
+    }
+
+    stageCard.appendChild(contentArea);
+    c.appendChild(stageCard);
+}
+
+function renderForgeRecipes(container) {
+    const grid = document.createElement('div');
+    grid.className = 'forge-grid-items';
+
+    FORGE.recipes.forEach(r => {
+        const isCrafted = !!(SaveSystem.d.forged && SaveSystem.d.forged[r.id]);
+        const card = document.createElement('div');
+        card.className = `forge-recipe-card ${isCrafted ? 'crafted' : ''}`;
+
+        const img = ASSETS[r.sprite] ? ASSETS[r.sprite].src : '';
+        const hasGold = SaveSystem.d.gold >= r.reqGold;
+        const hasScrap = (SaveSystem.d.scrap || 0) >= r.reqScrap;
+        
+        let allWepsMet = true;
+        const reqPillsHTML = r.reqWeps.map(req => {
+            const curRank = SaveSystem.d.weps[req.name] || 0;
+            const met = curRank >= req.minRank;
+            if(!met) allWepsMet = false;
+            return `
+                <div class="forge-req-pill ${met ? 'met' : 'unmet'}">
+                    ${req.name} Rank ${req.minRank}+ (${curRank}/${req.minRank})
+                </div>
+            `;
+        }).join('');
+
+        const canCraft = !isCrafted && hasGold && hasScrap && allWepsMet;
+
+        card.innerHTML = `
+            <div class="forge-recipe-header">
+                <img src="${img}" class="forge-recipe-img">
+                <div style="display:flex; flex-direction:column; gap:4px;">
+                    <div style="font-size:11px; font-weight:bold; color:#fff;">${r.n}</div>
+                    <div style="font-size:8px; color:#ffd700;">LEGENDARY FORGED WEAPON</div>
+                </div>
+                ${isCrafted ? `<div style="margin-left:auto; font-size:8px; color:#00ff66; border:1px solid #00ff66; padding:3px 6px;">CRAFTED &#10004;</div>` : ''}
+            </div>
+            <div style="font-size:8px; color:#aaa; line-height:1.5;">${r.desc}</div>
+            <div style="font-size:8px; color:#ffd700; margin-top:2px;">REQUIRED BLUEPRINT REAGENTS:</div>
+            <div class="forge-req-row">
+                ${reqPillsHTML}
+                <div class="forge-req-pill ${hasScrap ? 'met' : 'unmet'}">
+                    &#9874; ${r.reqScrap} Scrap (${SaveSystem.d.scrap || 0}/${r.reqScrap})
+                </div>
+                <div class="forge-req-pill ${hasGold ? 'met' : 'unmet'}">
+                    &#9733; ${r.reqGold} Gold (${SaveSystem.d.gold}/${r.reqGold})
+                </div>
+            </div>
+            <div style="margin-top:auto; display:flex; gap:8px;">
+                ${isCrafted 
+                    ? `<button class="btn btn-green" style="width:100%; font-size:8px;" disabled>AVAILABLE IN RUNS &#10004;</button>`
+                    : `<button class="btn ${canCraft ? 'btn-red' : ''}" style="width:100%; font-size:8px;" ${canCraft ? '' : 'disabled'} onclick="craftForgeWeapon('${r.id}')">
+                        ${canCraft ? `FORGE ${r.n.toUpperCase()}!` : 'REAGENTS INCOMPLETE'}
+                       </button>`
+                }
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+
+    container.appendChild(grid);
+}
+
+function craftForgeWeapon(recipeId) {
+    const r = FORGE.recipes.find(x => x.id === recipeId);
+    if(!r) return;
+    if(SaveSystem.d.gold < r.reqGold || (SaveSystem.d.scrap || 0) < r.reqScrap) {
+        ui.toast("NOT ENOUGH GOLD OR SCRAP!");
+        return;
+    }
+
+    const stageText = document.getElementById('forge-stage-text');
+    if(stageText) stageText.innerText = `SMELTING & HAMMERING ${r.n.toUpperCase()}...`;
+
+    playAnvilAnimation(() => {
+        SaveSystem.d.gold -= r.reqGold;
+        SaveSystem.d.scrap = Math.max(0, (SaveSystem.d.scrap || 0) - r.reqScrap);
+        if(!SaveSystem.d.forged) SaveSystem.d.forged = {};
+        SaveSystem.d.forged[r.id] = true;
+        if(!SaveSystem.d.weps) SaveSystem.d.weps = {};
+        if(!SaveSystem.d.weps[r.n]) SaveSystem.d.weps[r.n] = 1;
+
+        SaveSystem.save();
+        AU.play(1200, 'sine', 0.5, 0.8);
+        ui.toast(`FORGED: ${r.n.toUpperCase()} ADDED TO ARMORY!`);
+        renderForge();
+        renderLoadout();
+    });
+}
+
+function renderForgeEnchants(container) {
+    const headerInfo = document.createElement('div');
+    headerInfo.style.fontSize = '9px';
+    headerInfo.style.color = '#05d9e8';
+    headerInfo.style.marginBottom = '12px';
+    headerInfo.style.lineHeight = '1.6';
+    headerInfo.innerHTML = `&#9670; Select a weapon to infuse with persistent Forge Overclocking. Enchants apply across ALL your arena battles!`;
+    container.appendChild(headerInfo);
+
+    // Weapon selector pill dropdown
+    const wepKeys = Object.keys(WEAPONS);
+    const selWrap = document.createElement('div');
+    selWrap.style.display = 'flex';
+    selWrap.style.gap = '8px';
+    selWrap.style.flexWrap = 'wrap';
+    selWrap.style.marginBottom = '16px';
+
+    if(!FORGE.selectedWep) FORGE.selectedWep = 'Wand';
+
+    wepKeys.forEach(wKey => {
+        const isUnlocked = isWepUnlocked(wKey);
+        const btn = document.createElement('button');
+        btn.className = `btn ${FORGE.selectedWep === wKey ? 'btn-cyan' : ''}`;
+        btn.style.fontSize = '7.5px';
+        btn.style.padding = '6px 10px';
+        if(!isUnlocked) { btn.disabled = true; btn.style.opacity = '0.35'; }
+        btn.innerText = wKey;
+        btn.onclick = () => {
+            FORGE.selectedWep = wKey;
+            AU.ui();
+            renderForge();
+        };
+        selWrap.appendChild(btn);
+    });
+    container.appendChild(selWrap);
+
+    // Details for current weapon enchantments
+    const curWep = FORGE.selectedWep;
+    const curEnchants = (SaveSystem.d.enchants && SaveSystem.d.enchants[curWep]) ? SaveSystem.d.enchants[curWep] : {};
+    
+    const wepCard = document.createElement('div');
+    wepCard.style.background = '#141527';
+    wepCard.style.border = '2px solid #3d4368';
+    wepCard.style.padding = '14px';
+    wepCard.style.width = '100%';
+    wepCard.style.boxSizing = 'border-box';
+
+    const wepImg = ASSETS[WEAPONS[curWep].sprite] ? ASSETS[WEAPONS[curWep].sprite].src : '';
+    wepCard.innerHTML = `
+        <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px; border-bottom:1px solid #2d324d; padding-bottom:10px;">
+            <img src="${wepImg}" style="width:36px; height:36px; image-rendering:pixelated; border:2px solid #555; background:#0c0d18; padding:2px;">
+            <div>
+                <div style="font-size:12px; color:#fff; font-weight:bold;">${curWep} OVERCLOCKS</div>
+                <div style="font-size:8px; color:#aaa;">Infuse weapon modules using raw scrap and gold.</div>
+            </div>
+        </div>
+    `;
+
+    FORGE.enchants.forEach(enc => {
+        const curTier = curEnchants[enc.id] || 0;
+        const isMax = curTier >= enc.maxTier;
+        const nextScrap = enc.costScrap * (curTier + 1);
+        const nextGold = enc.costGold * (curTier + 1);
+        const canAfford = !isMax && (SaveSystem.d.scrap || 0) >= nextScrap && SaveSystem.d.gold >= nextGold;
+
+        const row = document.createElement('div');
+        row.className = 'forge-ench-row';
+        row.innerHTML = `
+            <div>
+                <div style="font-size:9px; color:#fff; font-weight:bold; margin-bottom:3px;">${enc.name}</div>
+                <div style="font-size:7.5px; color:#aaa; margin-bottom:4px;">${enc.desc}</div>
+                <div class="forge-stat-tier">
+                    ${'&#9733;'.repeat(curTier)}${'&#9734;'.repeat(enc.maxTier - curTier)} 
+                    <span style="font-size:7.5px; color:#7f8ca8; margin-left:4px;">(TIER ${curTier}/${enc.maxTier})</span>
+                </div>
+            </div>
+            <div>
+                ${isMax 
+                    ? `<button class="btn btn-green" style="font-size:7.5px; padding:6px 12px;" disabled>MAX TIER &#10004;</button>`
+                    : `<button class="btn ${canAfford ? 'btn-red' : ''}" style="font-size:7.5px; padding:6px 12px;" ${canAfford ? '' : 'disabled'} onclick="upgradeForgeEnchant('${curWep}', '${enc.id}', ${nextScrap}, ${nextGold})">
+                        INFUSE (${nextScrap} SCRAP / ${nextGold}G)
+                       </button>`
+                }
+            </div>
+        `;
+        wepCard.appendChild(row);
+    });
+
+    container.appendChild(wepCard);
+}
+
+function upgradeForgeEnchant(wepName, enchantId, scrapCost, goldCost) {
+    if((SaveSystem.d.scrap || 0) < scrapCost || SaveSystem.d.gold < goldCost) {
+        ui.toast("NOT ENOUGH REAGENTS!");
+        return;
+    }
+
+    const stageText = document.getElementById('forge-stage-text');
+    if(stageText) stageText.innerText = `INFUSING OVERCLOCK MODULE INTO ${wepName.toUpperCase()}...`;
+
+    playAnvilAnimation(() => {
+        SaveSystem.d.scrap -= scrapCost;
+        SaveSystem.d.gold -= goldCost;
+        if(!SaveSystem.d.enchants) SaveSystem.d.enchants = {};
+        if(!SaveSystem.d.enchants[wepName]) SaveSystem.d.enchants[wepName] = {};
+        SaveSystem.d.enchants[wepName][enchantId] = (SaveSystem.d.enchants[wepName][enchantId] || 0) + 1;
+
+        SaveSystem.save();
+        AU.coin();
+        ui.toast(`ENCHANTED: ${wepName} ${enchantId.toUpperCase()} UPGRADED!`);
+        renderForge();
+    });
+}
+
+function renderForgeSalvage(container) {
+    const box = document.createElement('div');
+    box.style.background = '#141527';
+    box.style.border = '2px solid #3d4368';
+    box.style.padding = '18px';
+    box.style.width = '100%';
+    box.style.boxSizing = 'border-box';
+    box.style.display = 'flex';
+    box.style.flexDirection = 'column';
+    box.style.gap = '14px';
+
+    box.innerHTML = `
+        <div style="font-size:11px; color:#ffd700; font-weight:bold;">SMELTER &amp; SALVAGE RECYCLER</div>
+        <div style="font-size:8px; color:#aaa; line-height:1.6;">
+            Transmute spare gold from your treasury into raw Forge Scrap, or melt scrap down back into gold coins.
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:8px;">
+            <div style="background:#0c0d18; border:2px solid #2d324d; padding:14px; text-align:center;">
+                <div style="font-size:9px; color:#ff9900; font-weight:bold; margin-bottom:6px;">PURCHASE SCRAP PACK</div>
+                <div style="font-size:8px; color:#aaa; margin-bottom:12px;">Exchange 300 Gold for +10 Forge Scrap</div>
+                <button class="btn btn-cyan" style="font-size:8px;" onclick="convertGoldToScrap(300, 10)">EXCHANGE (300G)</button>
+            </div>
+            <div style="background:#0c0d18; border:2px solid #2d324d; padding:14px; text-align:center;">
+                <div style="font-size:9px; color:#ffd700; font-weight:bold; margin-bottom:6px;">SMELT BULK SCRAP</div>
+                <div style="font-size:8px; color:#aaa; margin-bottom:12px;">Exchange 1200 Gold for +50 Forge Scrap</div>
+                <button class="btn btn-red" style="font-size:8px;" onclick="convertGoldToScrap(1200, 50)">EXCHANGE (1200G)</button>
+            </div>
+        </div>
+    `;
+
+    container.appendChild(box);
+}
+
+function convertGoldToScrap(goldCost, scrapAmt) {
+    if(SaveSystem.d.gold < goldCost) {
+        ui.toast("NOT ENOUGH GOLD!");
+        return;
+    }
+    const stageText = document.getElementById('forge-stage-text');
+    if(stageText) stageText.innerText = `SMELTING ${goldCost} GOLD INTO +${scrapAmt} SCRAP...`;
+
+    playAnvilAnimation(() => {
+        SaveSystem.d.gold -= goldCost;
+        SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + scrapAmt;
+        SaveSystem.save();
+        AU.coin();
+        ui.toast(`SMELTED: +${scrapAmt} FORGE SCRAP RECEIVED!`);
+        renderForge();
+    });
 }
 
 /* --- SEASON PASS SYSTEM --- */
@@ -4796,6 +5503,7 @@ window.onload=function() {
     SaveSystem.load(false); 
     renderBattleScreen();
     renderHeroes();
+    renderForge();
     renderSeasonPass();
     IN.init();
     resizeGame();
