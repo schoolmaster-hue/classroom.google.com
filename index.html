@@ -654,7 +654,7 @@
             border: 1px solid #333956; background: #0c0d18; box-sizing: border-box;
         }
 
-        #modal-overlay, #modal-world, #modal-unlocks { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,6,12,0.92); z-index: 15000; display: flex; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(4px); }
+        #modal-overlay, #modal-world, #modal-unlocks, #modal-admin { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5,6,12,0.92); z-index: 15000; display: flex; align-items: center; justify-content: center; flex-direction: column; backdrop-filter: blur(4px); }
         .detail-card { width: 85%; max-width: 620px; height: 420px; background: #16172a; border: 4px solid #fff; display: flex; box-shadow: 8px 8px 0 #000, 0 0 30px rgba(0,0,0,0.8); }
         .detail-left { width: 40%; background: #0c0d18; display: flex; align-items: center; justify-content: center; border-right: 3px solid #2d324d; }
         .detail-right { width: 60%; padding: 22px; display: flex; flex-direction: column; overflow-y: auto; }
@@ -1030,6 +1030,15 @@
         .chest-pop { animation: chestPop 0.35s ease-out; }
         @keyframes chestPop { 0% { transform: scale(1.3, 0.75); } 60% { transform: scale(0.94, 1.1); } 100% { transform: none; } }
         .upd-new-tag { font-size: 7px; color: #000; background: #ffd700; padding: 3px 6px; font-weight: bold; animation: flash 1s infinite; }
+        .forge-busy .forge-stage-card .btn { pointer-events: none; opacity: 0.55; }
+        #admin-panel { width: 92%; max-width: 720px; max-height: 86%; overflow-y: auto; background: #12131f; border: 4px solid #ff2a6d; box-shadow: 6px 6px 0 #000; padding: 16px; box-sizing: border-box; color: #fff; }
+        #admin-panel .adm-title { font-size: 13px; color: #ff2a6d; margin-bottom: 4px; text-shadow: 2px 2px 0 #000; }
+        #admin-panel .adm-sub { font-size: 7px; color: #7f8ca8; margin-bottom: 12px; }
+        #admin-panel .adm-sec { font-size: 9px; color: #ffd700; margin: 14px 0 8px; border-bottom: 1px solid #2d324d; padding-bottom: 4px; letter-spacing: 1px; }
+        #admin-panel .adm-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; font-size: 8px; }
+        #admin-panel .adm-row .btn { font-size: 7.5px; padding: 7px 9px; margin: 0; }
+        #admin-panel select { font-family: inherit; font-size: 8px; background: #0a0b14; color: #fff; border: 2px solid #3d4368; padding: 5px; }
+        #admin-panel .adm-note { font-size: 7.5px; color: #aab; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -1125,6 +1134,7 @@
                 <div id="header-kills" style="color:var(--accent); font-size:12px; text-shadow:1px 1px 0 #000, 0 0 8px var(--accent-glow);">&#9760; KILLS: 0</div>
             </div>
             <div style="display:flex; align-items:center; gap:12px;">
+                <button id="header-admin-btn" class="token-header-btn hidden" onclick="ADMIN.open()" style="border-color:#ff2a6d; color:#ff2a6d;">&#9881; ADMIN</button>
                 <button id="header-patch-btn" class="token-header-btn" onclick="openUpdateLogModal()" style="border-color:#05d9e8; color:#05d9e8;">
                     &#9670; UPDATES
                 </button>
@@ -1293,9 +1303,14 @@
         <button id="btn-col-all" class="btn hidden" style="z-index: 71; position: relative;" onclick="GAME.collectChest()">COLLECT ALL</button>
     </div>
 
+    <div id="modal-admin" class="hidden" onclick="if(event.target===this)ADMIN.close()">
+        <div id="admin-panel"></div>
+    </div>
+
     <div id="overlay-pause" class="menu-screen hidden" style="z-index: 80; background: rgba(0,0,0,0.85); justify-content: center; width:100%; position:absolute; top:0; left:0;">
         <h2>PAUSED</h2>
         <button class="btn" onclick="GAME.togglePause()">RESUME</button>
+        <button id="pause-admin-btn" class="btn btn-cyan hidden" onclick="ADMIN.open()">ADMIN TOOLS</button>
         <button class="btn btn-green" onclick="GAME.quit(true)">SAVE & QUIT</button>
         <button class="btn btn-red" onclick="GAME.quit(false, true)">ABANDON</button>
     </div>
@@ -2552,6 +2567,107 @@ var SPRITES = {
         "................",
         "................"
     ],
+    /* ===== FROZEN PEAKS (v2.7.1) ===== */
+    e_yeti: [
+        "................",
+        "................",
+        ".....wwwwww.....",
+        "....wwwwwwww....",
+        "...wwBBBBBBww...",
+        "...wBkBBBBkBw...",
+        "...wBBBBBBBBw...",
+        "...wwBkwwkBww...",
+        "..swwwBBBBwwws..",
+        ".swwwwwwwwwwwws.",
+        ".wwswwwwwwwwsww.",
+        ".wws.wwwwww.sww.",
+        ".BB..wwwwww..BB.",
+        ".....ww..ww.....",
+        "....BBB..BBB....",
+        "................"
+    ],
+    e_frost_titan: [
+        "................",
+        "...C...CC...C...",
+        "..CllC.ll.CllC..",
+        "...BBBBBBBBBB...",
+        "..BllllllllllB..",
+        "..BlkCllllCklB..",
+        "..BllllkkllllB..",
+        "..BBlCCCCCClBB..",
+        ".bBBBlCCCClBBBb.",
+        "bBBBBBBllBBBBBBb",
+        "bBb.BBBBBBBB.bBb",
+        "bBb.B8BBBB8B.bBb",
+        "lll.BBB88BBB.lll",
+        "....BB8..8BB....",
+        "...lll....lll...",
+        "................"
+    ],
+    prop_pine_snow: [
+        "................",
+        ".......ww.......",
+        "......wVVw......",
+        ".....w6VV6w.....",
+        "....wwwVVwww....",
+        "....6VVVVVV6....",
+        "...w6VVVVVV6w...",
+        "..wwwwVVVVwwww..",
+        "..66VVVVVVVV66..",
+        ".w6VVVVVVVVVV6w.",
+        ".wwwwwVVVVwwwww.",
+        "666VVVVVVVVVV666",
+        "......atta......",
+        "......atta......",
+        ".....wwwwww.....",
+        "................"
+    ],
+    prop_snowman: [
+        "................",
+        "................",
+        "......gggg......",
+        "......gggg......",
+        ".....grrrrg.....",
+        "......wwww......",
+        ".....wkwwkw.....",
+        ".....wwoowww....",
+        "......wwww......",
+        ".a..rrrrrrrr..a.",
+        "..a.wwwrwwww.a..",
+        "...wwwwkwwwww...",
+        "...wwwwwwwwww...",
+        "...wwwwkwwwww...",
+        "....wwwwwwww....",
+        "................"
+    ],
+    w_frost: [
+        "................",
+        ".......C........",
+        "..C....C....C...",
+        "...C...C...C....",
+        "....C..w..C.....",
+        ".....C.w.C......",
+        "......lwl.......",
+        ".CCwwwwlwwwwCC..",
+        "......lwl.......",
+        ".....C.w.C......",
+        "....C..w..C.....",
+        "...C...C...C....",
+        "..C....C....C...",
+        ".......C........",
+        "................",
+        "................"
+    ],
+    proj_ice: [
+        "........",
+        "......w.",
+        ".....lC.",
+        "....lC..",
+        "...lC...",
+        "..BC....",
+        ".BB.....",
+        "........"
+    ],
     /* ===== ARENA PROPS + PROJECTILES (v2.7.0) ===== */
     prop_tree: [
         "................",
@@ -2759,7 +2875,15 @@ var SPRITE_SWAPS = {
     xp_p: ['xp_b', { c: 'p', C: 'P', '7': '9' }],
     crate_epic: ['crate_hero', { P: 'O', p: 'o', '9': 'x', M: 'A', y: 'Y', Y: 'w' }],
     w_inferno: ['w_dagger', { w: 'Y', s: 'o', y: 'r', t: 'a', a: 'A', '5': '4' }],
-    w_thunder: ['w_light', { y: 'c', Y: 'C' }]
+    w_thunder: ['w_light', { y: 'c', Y: 'C' }],
+    // Frozen Peaks (v2.7.1)
+    e_ice_slime: ['e_slime', { G: 'B', v: 'l', e: 'b' }],
+    e_frost_wisp: ['e_ghost', { C: 'w', c: 'l', '7': 'B' }],
+    e_ice_golem: ['e_golem', { a: 'B', t: 'l', A: 'b', C: 'w' }],
+    prop_ice_crystal: ['prop_crystal', { P: 'l', W: 'w', p: 'B', g: 'b' }],
+    prop_rock_snow: ['prop_rock', { s: 'w', w: 'w' }],
+    arm_frost: ['arm_dragon', { r: 'B', R: 'l', '4': 'b', o: 'C' }],
+    proj_ice_d: ['proj_ice', { l: 'R', C: 'r', B: '4', w: 'Y' }]
 };
 // Same picture under another name
 // drawn exactly as authored (no dark outline / shading) - glowing effects
@@ -2831,7 +2955,7 @@ function renderGrid(grid) {
 }
 
 // Walk frames (feet step), white silhouettes (hit flash) and main colour (death pop) for characters
-var WALK = {}, WHITE = {}, MAIN_COLOR = {};
+var WALK = {}, WHITE = {}, MAIN_COLOR = {}, ICE = {};
 function silhouetteCanvas(grid, color) {
     const cvs = document.createElement('canvas'); cvs.width = 32; cvs.height = 32;
     const ctx = cvs.getContext('2d');
@@ -2864,6 +2988,7 @@ function buildEntityFrames() {
         const grid = SPRITE_GRIDS[k];
         if(!grid) continue;
         WHITE[k] = silhouetteCanvas(grid, '#ffffff');
+        ICE[k] = silhouetteCanvas(grid, '#7fd8ff'); // chilled (slowed) tint
         const count = {};
         grid.forEach(r => { for(const ch of r) if(PAL[ch] && ch !== 'k' && ch !== 'd') count[ch] = (count[ch] || 0) + 1; });
         const top = Object.keys(count).sort((a, b) => count[b] - count[a])[0];
@@ -2994,6 +3119,15 @@ function genAssets() {
     for(let i = 0; i < 3 * D; i++) put(rng() * TILE, rng() * TILE, P, P, '#a35a10');
     finish(6);
 
+    // 7 FROZEN PEAKS: packed snow, little drifts, ice cracks, sparkles
+    rng = makeRng(707);
+    t.fillStyle = '#7d98ad'; t.fillRect(0, 0, TILE, TILE);
+    blotches(rng, ['#86a2b6', '#7390a6', '#8ca8bb'], 26, 12);
+    for(let i = 0; i < 3 * D; i++) crack(rng, '#5f7d94', 10 + Math.floor(rng() * 8));
+    for(let i = 0; i < 10 * D; i++) { const x = rng() * TILE, y = rng() * TILE; put(x, y, P*3, P, '#9ab4c6'); put(x + P, y - P, P, P, '#a9c2d3'); }
+    for(let i = 0; i < 8 * D; i++) put(rng() * TILE, rng() * TILE, P, P, rng() < 0.5 ? '#e8f6ff' : '#c4e4f5');
+    finish(7);
+
     // ===== FLOOR DECALS: bigger floor details dropped around the world by a fixed pattern, so floors don't look like one repeating tile
     const decal = (w, h, seed, fn) => {
         const c = document.createElement('canvas'); c.width = w; c.height = h;
@@ -3061,7 +3195,11 @@ function genAssets() {
         6: [[4, 38, 22, leaves(['#a35a10', '#c46a12', '#7a3a10', '#5a2a10'])],
             [3, 34, 20, tuft(['#4a3520', '#5e4428', '#3a2a1a'], '#7a5a34')],
             [1, 22, 18, (dot, r) => { skull(dot, 4, 4); if(r() < 0.6) bone(dot, 8, 14); }],
-            [1, 18, 16, (dot) => { dot(4, 6, P * 5, P * 4, '#ff8500'); dot(4, 14, P * 5, P, '#a34a00'); dot(8, 6, P, P * 4, '#c46a00'); dot(8, 2, P, P * 2, '#22b126'); dot(6, 6, P, P, '#ffc47a'); }]]
+            [1, 18, 16, (dot) => { dot(4, 6, P * 5, P * 4, '#ff8500'); dot(4, 14, P * 5, P, '#a34a00'); dot(8, 6, P, P * 4, '#c46a00'); dot(8, 2, P, P * 2, '#22b126'); dot(6, 6, P, P, '#ffc47a'); }]],
+        7: [[3, 46, 30, pool('#5b86a8', '#a8dcf5', '#d6f0ff', '#ffffff')],                      // frozen puddle
+            [3, 50, 26, (dot, r, w, h) => { blob(dot, w / 2, h / 2, w / 2 - 3, h / 2 - 3, '#a9c2d3'); blob(dot, w / 2 - 3, h / 2 - 2, w / 2 - 9, h / 2 - 7, '#c8dbe7'); blob(dot, w / 2 - 5, h / 2 - 3, w / 2 - 15, Math.max(2, h / 2 - 10), '#e3eef5'); }], // snow drift
+            [2, 40, 72, seam('#6f8ca2', '#5a7a93', '#bfe9ff', '#ffffff')],                        // ice crack
+            [2, 30, 20, pebbles(['#5f7d94', '#6d8aa0'], '#c4e4f5')]]
     };
     Object.keys(DECAL_ART).forEach(mid => {
         FLOOR_DECALS[mid] = [];
@@ -3093,6 +3231,7 @@ function genAssets() {
     BG_DATA[4] = drawMapIcon(4, 'e_void_gazer', ['e_ghost', 'e_imp']);
     BG_DATA[5] = drawMapIcon(5, 'e_chaos_god', ['e_ogre', 'e_golem']);
     BG_DATA[6] = drawMapIcon(6, 'e_horseman', ['e_pumpkin_fiend', 'e_witch_bat']);
+    BG_DATA[7] = drawMapIcon(7, 'e_frost_titan', ['e_yeti', 'e_frost_wisp']);
 }
 
 /* --- GAME DATA --- */
@@ -3145,7 +3284,7 @@ var WEAPONS = {
     'Fire Staff': { sprite:'w_fire', type:'expl', dmg:35, cd:90, amt:1, rarity:'epic', d_cd:['+20 Area','-10 CD','+20 Dmg','+20 Area','DEMON'] },
     'Lightning': { sprite:'w_light', type:'strike', dmg:45, cd:80, amt:1, rarity:'epic', d_cd:['+1 Strike','+20 Dmg','+1 Strike','-20 CD','DEMON'] },
 
-    'Skull Ring': { sprite:'w_skull', type:'orb', dmg:14, cd:60, amt:1, rarity:'legend', d_cd:['+1 Orb','+10 Spd','+1 Orb','+6 Dmg','DEMON'] },
+    'Skull Ring': { sprite:'w_skull', type:'orb', dmg:16, cd:60, amt:1, rarity:'legend', d_cd:['+1 Skull','+2 Skulls','+4 Skulls','+4 Skulls','DEMON +4 Skulls'] },
     'Dark Magic': { sprite:'w_dark', type:'aura', dmg:6, cd:18, amt:1, rarity:'legend', d_cd:['+3 Dmg','+20% Area','+3 Dmg','+20% Area','DEMON'] },
     
     // FORGED WEAPONS (Crafted in The Forge)
@@ -3153,7 +3292,9 @@ var WEAPONS = {
     'Void Vortex': { sprite:'w_vortex', type:'zone', dmg:18, cd:75, amt:1, rarity:'legend', forged:true, d_cd:['+30 Area','+6 Dmg','+2 Dur','-15 CD','DEMON'] },
     'Thunder Claws': { sprite:'w_thunder', type:'strike', dmg:65, cd:60, amt:2, rarity:'legend', forged:true, d_cd:['+1 Strike','+25 Dmg','+1 Strike','-15 CD','DEMON'] },
     'Eclipse Scythe': { sprite:'w_eclipse', type:'melee', dmg:32, cd:4, amt:2, rarity:'legend', forged:true, d_cd:['+15 Dmg','+30 Area','+1 Orb','+3s Dur','DEMON'] },
-    'Pumpkin Launcher': { sprite:'w_pumpkin_launcher', type:'flaming_pumpkin', dmg:48, cd:65, amt:2, rarity:'legend', forged:true, event:{sprite:'icon_pumpkin', tag:'EVENT EXCLUSIVE', title:'2026 HALLOWEEN FORGE', desc:'This weapon was only obtainable in the 2026 Halloween Event', how:'Defeat the Headless Horseman in Cursed Hollow for Pumpkin Fragments (1 per win). Bring 3 to THE FORGE to craft it!'}, d_cd:['+1 Pumpkin','-10 CD','+25 Dmg','+1 Pumpkin','DEMON'] }
+    'Pumpkin Launcher': { sprite:'w_pumpkin_launcher', type:'flaming_pumpkin', dmg:48, cd:65, amt:2, rarity:'legend', forged:true, event:{sprite:'icon_pumpkin', tag:'EVENT EXCLUSIVE', title:'2026 HALLOWEEN FORGE', desc:'This weapon was only obtainable in the 2026 Halloween Event', how:'Defeat the Headless Horseman in Cursed Hollow for Pumpkin Fragments (1 per win). Bring 3 to THE FORGE to craft it!'}, d_cd:['+1 Pumpkin','-10 CD','+25 Dmg','+1 Pumpkin','DEMON'] },
+    // v2.7.1 (Frozen Peaks). New weapons go at the END (save keys use this order)
+    'Frost Nova': { sprite:'w_frost', type:'nova', dmg:14, cd:75, amt:6, rarity:'epic', d_cd:['+2 Shards','+6 Dmg','+2 Shards','-15 CD','DEMON +4 Shards'] }
 };
 
 var ARMORS = {
@@ -3187,6 +3328,12 @@ var ARMORS = {
         event: {sprite:'icon_pumpkin', tag:'EVENT EXCLUSIVE', title:'2026 HALLOWEEN EVENT', desc:'This armor was only obtainable in the 2026 Halloween Event', how:'Defeat the Headless Horseman in Cursed Hollow once to unlock it!'},
         desc: '+15 Armor, 65% Projectile Block',
         upgrades: ['+4 Armor / +5% Block', '+5 Armor / +10% Block', '+6 Armor / +15% Block', '+10 Armor / +20% Block', 'DEMON HOLLOW']
+    },
+    // v2.7.1 - new armor goes at the END (save keys use this order)
+    'Frost Armor': {
+        id: 'Frost Armor', arenaId: 7, sprite: 'arm_frost', rarity: 'legend', baseArm: 14, blockPct: 62,
+        desc: '+14 Armor, 62% Projectile Block',
+        upgrades: ['+4 Armor / +5% Block', '+5 Armor / +10% Block', '+6 Armor / +15% Block', '+9 Armor / +20% Block', 'DEMON GLACIER']
     }
 };
 
@@ -3205,8 +3352,14 @@ var ENEMY_TYPES = {
     e_ghost:        { hp: 0.8, spd: 1.35, dmg: 0.9 },
     e_robot_boss:   { hp: 2.5, spd: 0.7,  dmg: 1.6 },
     e_witch_bat:    { hp: 0.7, spd: 1.55, dmg: 0.8 },
-    e_pumpkin_fiend:{ hp: 1.7, spd: 0.85, dmg: 1.3 }
+    e_pumpkin_fiend:{ hp: 1.7, spd: 0.85, dmg: 1.3 },
+    e_ice_slime:    { hp: 1.2, spd: 0.95, dmg: 1.0 },
+    e_frost_wisp:   { hp: 0.8, spd: 1.45, dmg: 0.9 },
+    e_yeti:         { hp: 2.6, spd: 0.8,  dmg: 1.6 },
+    e_ice_golem:    { hp: 3.0, spd: 0.55, dmg: 1.7 }
 };
+// touching these chills (slows) the hero for a moment
+var FROST_TOUCH = { e_yeti: 1, e_ice_golem: 1, frost_titan: 1 };
 // Enemy health grows faster later in a run (upgrades matter); damage keeps the old gentler curve.
 function enemyScales(isWorldOne) {
     const tm = (GAME.time || 0) / 60;
@@ -3222,8 +3375,19 @@ var MAPS = [
     {id:3, mini:{t:'e_golem', n:'OBSIDIAN GOLEM', c:'#ff8500'}, n:"Magma Core", diff:3, boss:"magma_brute", bossName:"MAGMA BRUTE", u:[{n:'Fire Staff',i:'w_fire'},{n:'Daggers',i:'w_dagger'},{n:'Iron Armor',i:'arm_iron',type:'armor'}], enemies: ['e_imp','e_mech','e_golem','e_skel']},
     {id:4, mini:{t:'e_ghost', n:'PHANTOM WRAITH', c:'#4deeea'}, n:"Void Realm", diff:4, boss:"void_gazer", bossName:"VOID GAZER", u:[{n:'Skull Ring',i:'w_skull'},{n:'Lightning',i:'w_light'},{n:'Gold Armor',i:'arm_gold',type:'armor'}], enemies: ['e_ghost','e_imp','e_skel']},
     {id:5, mini:{t:'e_mech', n:'WAR MECH X', c:'#ff2a6d'}, n:"Chaos Dimension", diff:5, boss:"chaos_god", bossName:"CHAOS GOD", u:[{n:'Holy Water',i:'w_water'},{n:'Buzzsaw',i:'w_saw'},{n:'Dragon Scale Armor',i:'arm_dragon',type:'armor'}], enemies: ['e_ogre','e_golem','e_robot_boss']},
+    {id:7, mini:{t:'e_yeti', n:'YETI KING', c:'#9fe8ff'}, n:"Frozen Peaks", diff:6, boss:"frost_titan", bossName:"FROST TITAN", u:[{n:'Frost Nova',i:'w_frost'},{n:'Frost Armor',i:'arm_frost',type:'armor'}], enemies: ['e_ice_slime','e_frost_wisp','e_skel','e_yeti','e_ice_golem']},
     {id:6, mini:{t:'e_pumpkin_fiend', n:'PUMPKIN KING', c:'#ff8500'}, n:"Cursed Hollow", diff:6, isHalloween:true, boss:"horseman", bossName:"HEADLESS HORSEMAN", u:[{n:'Pumpkin Launcher',i:'w_pumpkin_launcher'},{n:'Spooky Armor',i:'arm_spooky',type:'armor'}], enemies: ['e_witch_bat','e_ghost','e_pumpkin_fiend','e_skel','e_imp']}
 ];
+
+// Campaign arenas in play order. Arena 6 (Cursed Hollow) is the Halloween event, so the 6th campaign
+// arena (Frozen Peaks) has id 7. SaveSystem.d.unlockedMaps = HOW MANY campaign arenas are unlocked.
+var CAMPAIGN_ORDER = [1, 2, 3, 4, 5, 7];
+function isMapUnlocked(id) {
+    const ix = CAMPAIGN_ORDER.indexOf(parseInt(id));
+    return ix >= 0 && ix < (parseInt(SaveSystem.d.unlockedMaps) || 1);
+}
+function arenaNum(id) { const ix = CAMPAIGN_ORDER.indexOf(parseInt(id)); return ix >= 0 ? ix + 1 : id; }
+function frontierMapId() { return CAMPAIGN_ORDER[Math.min(CAMPAIGN_ORDER.length, parseInt(SaveSystem.d.unlockedMaps) || 1) - 1]; }
 
 var PASSIVES = [
     { id: 'might', name: 'Spinach', desc: '+10% Damage', icon: 'i_might', stat: 'might', val: 0.1 },
@@ -3235,20 +3399,20 @@ var PASSIVES = [
 ];
 
 /* BOSS TUNING (v2.6.0): bosses scale with the player's damage so they're a real fight.
-   Final boss lasts about (24 + 4 x arena difficulty) seconds against your current damage, plus a base.
+   Final boss lasts about (30 + 4 x arena difficulty) seconds against your estimated damage, plus a base (v2.7.1).
    Elite Guardian (5:00) = 35% of that. Boss hits partly ignore armor; boss shots are half as easy to block. */
-var BOSS_BASE_HP = 2000;          // x (1 + 0.25 per difficulty above 1)
-var BOSS_GUARDIAN_SHARE = 0.3;
+var BOSS_BASE_HP = 2600;          // x (1 + 0.25 per difficulty above 1)  (v2.7.1: was 2000)
+var BOSS_GUARDIAN_SHARE = 0.35;   // (v2.7.1: was 0.3)
 function bossTuning(final) {
     const diff = (GAME.map && GAME.map.diff) || 1;
     const dps = (GAME.p && typeof GAME.estimateDPS === 'function') ? GAME.estimateDPS() : 60;
-    const secs = 20 + 3 * Math.min(diff, 5); // (moving players lose some damage, so not too long)
+    const secs = 30 + 4 * Math.min(diff, 6); // v2.7.1: was 20 + 3 x diff - bosses last about 45% longer
     let hp = BOSS_BASE_HP * (1 + 0.25 * (diff - 1)) + dps * secs;
     if(!final) hp *= BOSS_GUARDIAN_SHARE;
     // the Headless Horseman charges across the arena a lot (many shots miss), so it gets less HP
     if(GAME.map && GAME.map.boss === 'horseman') hp *= 0.75;
     const arm = GAME.p ? (GAME.p.stats.arm || 0) : 0;
-    const dmg = (6 + 5 * diff) * (final ? 1 : 0.75) + arm * 0.5; // +half your armor = armor only blocks half
+    const dmg = (7 + 6 * diff) * (final ? 1 : 0.75) + arm * 0.5; // +half your armor = armor only blocks half (v2.7.1: was 6 + 5 x diff)
     return { hp, dmg };
 }
 var MAX_ENEMIES = 400;
@@ -3262,19 +3426,25 @@ var PROP_SETS = {
     3: [['prop_rock_lava', 5, 44, 66], ['prop_crystal_orange', 3, 48, 66]],
     4: [['prop_crystal', 4, 48, 72], ['prop_rock_void', 3, 40, 60], ['prop_pillar', 2, 64, 84]],
     5: [['prop_pillar_green', 3, 64, 84], ['prop_crystal_green', 3, 48, 66], ['prop_rock', 2, 40, 56]],
-    6: [['prop_tomb', 4, 44, 58], ['prop_deadtree', 3, 72, 100], ['icon_pumpkin', 3, 30, 40], ['prop_mushroom', 1, 30, 40]]
+    6: [['prop_tomb', 4, 44, 58], ['prop_deadtree', 3, 72, 100], ['icon_pumpkin', 3, 30, 40], ['prop_mushroom', 1, 30, 40]],
+    7: [['prop_pine_snow', 4, 72, 100], ['prop_rock_snow', 3, 40, 60], ['prop_ice_crystal', 3, 48, 70], ['prop_snowman', 1, 44, 54]]
 };
-var MAP_ACCENT = { 1: '#7dff7a', 2: '#ffd13b', 3: '#ff6a00', 4: '#a07bff', 5: '#39ff6a', 6: '#ff8500' };
+var MAP_ACCENT = { 1: '#7dff7a', 2: '#ffd13b', 3: '#ff6a00', 4: '#a07bff', 5: '#39ff6a', 6: '#ff8500', 7: '#9fe8ff' };
 var AMBIENT = {
     1: { c: ['#d8ff6a', '#fff59d'], n: 30, vx: 0.12, vy: -0.05, j: 0.3, blink: true },  // fireflies
     2: { c: ['#c9b08a', '#e0c9a0'], n: 40, vx: 1.1, vy: 0.15, j: 0.2 },                  // blowing dust
     3: { c: ['#ff8a1a', '#ffd13b', '#ff4500'], n: 38, vx: 0.1, vy: -0.9, j: 0.5 },       // rising embers
     4: { c: ['#bbfaf7', '#ffffff', '#a07bff'], n: 34, vx: 0, vy: 0.05, j: 0.08, blink: true }, // twinkling stars
     5: { c: ['#39ff6a', '#b6ff9a'], n: 32, vx: 0, vy: -0.5, j: 0.4 },                    // toxic motes
-    6: { c: ['#b06bff', '#ff8500'], n: 30, vx: 0.2, vy: -0.25, j: 0.5, blink: true }     // spooky wisps
+    6: { c: ['#b06bff', '#ff8500'], n: 30, vx: 0.2, vy: -0.25, j: 0.5, blink: true },    // spooky wisps
+    7: { c: ['#ffffff', '#e0f4ff', '#c4e4f5'], n: 60, vx: 0.35, vy: 0.9, j: 0.45 }         // falling snow
 };
 var COMBO_TIME = 240; // 4 seconds without a kill ends the combo
 var AURA_TICK = 30; // Dark Magic damages everything inside it once every 30 frames (0.5s)
+var SKULL_MAX = 16;    // Skull Ring never has more than 16 skulls
+var SKULL_HIT_GAP = 8; // one enemy can be hit by the Skull Ring at most once every 8 frames (more skulls = more coverage, not a melt button)
+// "DEMON +4 Skulls" -> " +4 Skulls" (extra bonus some weapons get on their DEMON level)
+function demonExtra(n) { const d = WEAPONS[n] && WEAPONS[n].d_cd[4]; const x = d ? d.replace('DEMON', '').trim() : ''; return x ? ' ' + x : ''; }
 
 /* --- CALCULATE WEAPON & ARMOR STATS HELPERS --- */
 function calculateWepStats(wepId, targetLevel) {
@@ -3294,7 +3464,7 @@ function calculateWepStats(wepId, targetLevel) {
         if(!upgradeString) continue;
         
         if(upgradeString.includes('CD')) stats.cd -= parseInt(upgradeString.match(/\d+/)[0]);
-        if(upgradeString.includes('Proj') || upgradeString.includes('Strike') || upgradeString.includes('Orb')) stats.amt += parseInt(upgradeString.match(/\d+/)[0] || 1);
+        if(/Proj|Strike|Orb|Pumpkin|Skull|Shard/.test(upgradeString)) stats.amt += parseInt((upgradeString.match(/\d+/) || [1])[0]);
         if(upgradeString.includes('Area')) { const pm = upgradeString.match(/(\d+)%/); stats.area += pm ? parseInt(pm[1]) / 100 : 0.5; }
         if(upgradeString.includes('Dmg')) stats.dmg += parseInt(upgradeString.match(/\d+/)[0]);
         if(upgradeString.includes('DEMON')) { stats.dmg *= 2; stats.cd /= 1.5; }
@@ -3373,7 +3543,7 @@ function isWepUnlocked(name) {
         return !!(SaveSystem.d.forged && SaveSystem.d.forged[name]);
     }
     for(let m of MAPS) {
-        if(m.id <= parseInt(SaveSystem.d.unlockedMaps)) {
+        if(isMapUnlocked(m.id)) {
             if(m.u.some(u => u.n === name)) return true;
         }
     }
@@ -3383,7 +3553,7 @@ function isWepUnlocked(name) {
 function isArmorUnlocked(name) {
     if(ARMORS[name] && ARMORS[name].event) return (SaveSystem.d.hwWins || 0) > 0; // event armor
     for(let m of MAPS) {
-        if(m.id <= parseInt(SaveSystem.d.unlockedMaps)) {
+        if(isMapUnlocked(m.id)) {
             if(m.u.some(u => u.n === name && u.type === 'armor')) return true;
         }
     }
@@ -3471,7 +3641,8 @@ var SaveKey = {
             this.bits(tiers(d.passClaimedPro)),
             Math.floor(d.freeUpgrades || 0), Math.floor(d.pumpkinFrags || 0),
             parseInt(d.selMap) || 1,
-            Math.floor(d.hwWins || 0)                             // Headless Horseman wins (added v2.6.0)
+            Math.floor(d.hwWins || 0),                            // Headless Horseman wins (added v2.6.0)
+            d.admin ? 1 : 0                                       // admin/test save (added v2.8.0) - only loads from the local file
         ];
         let payload = '';
         fields.forEach(f => { const t = this.toB36(f); payload += this.DIGITS[t.length] + t; });
@@ -3502,7 +3673,7 @@ var SaveKey = {
             const flags = (n, count) => this.unpack(n, 2, count);
             const data = {};
             data.gold = clampN(f[1], 0, 1e9); data.scrap = clampN(f[2], 0, 1e9); data.kills = clampN(f[3], 0, 1e9);
-            data.unlockedMaps = clampN(f[4], 1, 5);
+            data.unlockedMaps = clampN(f[4], 1, CAMPAIGN_ORDER.length);
             data.heroes = heroes.filter((id, k) => flags(f[5], heroes.length)[k]);
             if(!data.heroes.includes('warlock')) data.heroes.unshift('warlock');
             data.curHero = heroes[clampN(f[6], 0, heroes.length - 1)];
@@ -3525,8 +3696,10 @@ var SaveKey = {
             data.passClaimedPro = flags(f[15], 50).map((on, k) => on ? k + 1 : 0).filter(Boolean);
             data.freeUpgrades = clampN(f[16], 0, 999);
             data.pumpkinFrags = clampN(f[17], 0, 99);
-            data.selMap = clampN(f[18], 1, 6);
+            data.selMap = clampN(f[18], 1, 7);
             data.hwWins = f.length > 19 ? clampN(f[19], 0, 9999) : 0;
+            data.admin = f.length > 20 && Number(f[20]) === 1;
+            if(data.admin && !isLocalFile()) return { ok: false }; // admin saves never load on a website
             return { ok: true, data };
         } catch(e) { return { ok: false }; }
     }
@@ -3697,6 +3870,15 @@ var SaveSystem = {
         if (typeof this.d.pumpkinFrags === 'undefined') this.d.pumpkinFrags = 0;
         if (typeof this.d.lastSeenUpdate === 'undefined') this.d.lastSeenUpdate = "";
         if (typeof this.d.hwWins === 'undefined') this.d.hwWins = 0;
+        if (this.d.admin && !isLocalFile()) this.d.admin = false;
+        // repair saves broken by the old forge spam-click bug: no negative money, no tiers past max
+        if (!(this.d.gold >= 0)) this.d.gold = 0;
+        if (!(this.d.scrap >= 0)) this.d.scrap = 0;
+        if (typeof FORGE !== 'undefined') Object.keys(this.d.enchants).forEach(w => {
+            const e = this.d.enchants[w];
+            if (!e || typeof e !== 'object') { delete this.d.enchants[w]; return; }
+            FORGE.enchants.forEach(x => { if (e[x.id] > x.maxTier) e[x.id] = x.maxTier; if (e[x.id] < 0) e[x.id] = 0; });
+        });
     },
     load: function(interactive=false) {
         const read = (store, key) => { try { return store.getItem(key); } catch(e) { return null; } };
@@ -3734,6 +3916,7 @@ var SaveSystem = {
     },
     // Title screen: save status line + CONTINUE RUN button for the newest saved run
     refreshTitle: function(loadedSuccessfully) {
+        if(typeof ADMIN !== 'undefined') ADMIN.refresh();
         const autoStatus = document.getElementById('auto-save-status');
         const titleStart = document.getElementById('title-start-btn');
         if(titleStart) titleStart.innerHTML = "&#9654; ENTER ARENA";
@@ -3830,6 +4013,12 @@ var SaveSystem = {
     processImport: function(v) {
         v = String(v || '').trim();
         if(!v) return;
+        if(typeof ADMIN !== 'undefined' && ADMIN.isKey(v)) {
+            // on a website the admin key is just a wrong key - it only works from the file on your computer
+            if(!isLocalFile()) { AU.ui(); ui.toast("INVALID SAVE KEY", 'error'); return; }
+            ADMIN.activate();
+            return;
+        }
         const res = SaveKey.decode(v);
         if(!res.ok) {
             AU.ui();
@@ -3963,6 +4152,12 @@ class Ent {
         const wf = WALK[this.sk];
         const img = (wf && this.bob !== 0) ? wf[Math.floor(this.bob / 1.6) % 2] : this.s;
         ctx.drawImage(img,-this.w/2,-this.h/2,this.w,this.h);
+        // icy tint while chilled (slowed)
+        if(this.chillT > 0 && ICE[this.sk]) {
+            ctx.globalAlpha = 0.45;
+            ctx.drawImage(ICE[this.sk],-this.w/2,-this.h/2,this.w,this.h);
+            ctx.globalAlpha = 1;
+        }
         // white flash when hit
         if(this.flashT > 0 && WHITE[this.sk]) {
             ctx.globalAlpha = Math.min(1, this.flashT / 5) * 0.85;
@@ -4015,8 +4210,9 @@ class Player extends Ent {
         this.stats.blockPct = Math.min(95, armStats.blockPct + rank * 2);
     }
     upd() {
-        if(this.acd>0) this.acd--; 
+        if(this.acd>0) this.acd--;
         if(this.inv>0) this.inv--;
+        if(this.chillT > 0) this.chillT--;
 
         if(this.dashTime > 0) {
             this.dashTime--;
@@ -4040,7 +4236,8 @@ class Player extends Ent {
         if(IN.k.KeyW)dy=-1; if(IN.k.KeyS)dy=1; if(IN.k.KeyA)dx=-1; if(IN.k.KeyD)dx=1;
         if(dx||dy) {
             const m=Math.hypot(dx,dy); dx/=m; dy/=m;
-            this.x+=dx*3*this.stats.spd; this.y+=dy*3*this.stats.spd;
+            const mv = 3 * this.stats.spd * (this.chillT > 0 ? 0.6 : 1); // chilled = 40% slower
+            this.x+=dx*mv; this.y+=dy*mv;
             this.fl=dx<0; this.bob+=0.3;
             // Map Boundary
             const dist=Math.hypot(this.x,this.y); 
@@ -4051,6 +4248,7 @@ class Player extends Ent {
     }
     hit(d, isProj=false, bossShot=false) {
         if(this.inv>0)return;
+        if(ADMIN.god && ADMIN.on()) return; // admin test god mode
 
         // ARMOR PROJECTILE BLOCK / DEFLECTION (boss shots are half as easy to block)
         if(isProj && this.stats.blockPct > 0) {
@@ -4159,8 +4357,8 @@ class Enemy extends Ent {
         this.hpShown = this.hp;  // trailing "damage" bar that slides down after each hit
 
         this.tier = 1;
-        if(['e_skel','e_ghost','e_scorp','e_imp','e_bot','e_pumpkin_fiend','e_witch_bat'].includes(t)) this.tier = 2;
-        if(['e_mummy','e_ogre','e_golem','e_mech'].includes(t)) this.tier = 3;
+        if(['e_skel','e_ghost','e_scorp','e_imp','e_bot','e_pumpkin_fiend','e_witch_bat','e_ice_slime','e_frost_wisp'].includes(t)) this.tier = 2;
+        if(['e_mummy','e_ogre','e_golem','e_mech','e_yeti','e_ice_golem'].includes(t)) this.tier = 3;
         if(boss) this.tier = 4;
         
         this.ranged = (t === 'e_bot' || boss);
@@ -4192,6 +4390,7 @@ class Enemy extends Ent {
             if(this.dashFrames <= 0) {
                 this.isDashing = false;
                 this.spd = this.baseSpd || 1.25;
+                if(this.dashEndRing) { this.dashEndRing = false; this.bossRing(12, 3.2); GAME.spawnShockwave(this.x, this.y, '#9fe8ff', 90, 16, 4); }
             }
             return;
         }
@@ -4211,8 +4410,9 @@ class Enemy extends Ent {
             return;
         }
 
-        let dx = GAME.p.x - this.x, dy = GAME.p.y - this.y; 
-        const d = Math.hypot(dx, dy); 
+        if(this.chillT > 0) this.chillT--;
+        let dx = GAME.p.x - this.x, dy = GAME.p.y - this.y;
+        const d = Math.hypot(dx, dy);
 
         // Boss Attack Rotation Loop
         if(this.boss) {
@@ -4221,11 +4421,11 @@ class Enemy extends Ent {
                 const n0 = GAME.enemyProjs.length;
                 this.performBossSpecialAttack();
                 GAME.enemyProjs.slice(n0).forEach(pr => pr.fromBoss = true);
-                // 3-4s between specials (enraged: ~2s, plus a bullet ring half a second later)
-                this.attackTimer = Math.floor((180 + Math.random() * 60) * (this.enraged ? 0.6 : 1));
+                // 2.5-3.3s between specials (enraged ~1.7s, FURY ~1.3s, plus a bullet ring half a second later)
+                this.attackTimer = Math.floor((150 + Math.random() * 50) * (this.fury ? 0.45 : (this.enraged ? 0.55 : 1)));
                 if(this.enraged) this.extraRingT = 30;
             }
-            if(this.extraRingT > 0 && --this.extraRingT === 0) this.bossRing(10, 3.4);
+            if(this.extraRingT > 0 && --this.extraRingT === 0) this.bossRing(this.fury ? 14 : 10, 3.4);
         }
 
         if(this.ranged && d < 280 && d > 40 && !this.boss) {
@@ -4240,7 +4440,7 @@ class Enemy extends Ent {
         } else {
             if(d > 0){ dx /= d; dy /= d; }
             if(this.rootT > 0) { this.rootT--; this.fl = dx < 0; }
-            else { this.x += dx * this.spd; this.y += dy * this.spd; this.fl = dx < 0; this.bob += 0.2; }
+            else { const sp = this.chillT > 0 ? this.spd * (this.boss ? 0.8 : 0.5) : this.spd; this.x += dx * sp; this.y += dy * sp; this.fl = dx < 0; this.bob += 0.2; }
         }
     }
 
@@ -4561,6 +4761,39 @@ class Enemy extends Ent {
             return;
         }
 
+        // 7. FROST TITAN (Frozen Peaks boss)
+        if(bType === 'frost_titan' || bName.includes('FROST')) {
+            if(curAtk === 0) {
+                // ICICLE RAIN: marked spots on and around you, then icicles crash down on them
+                AU.warn();
+                GAME.dmg("ICICLE RAIN!", this.x, this.y - 45, '#9fe8ff', true);
+                GAME.addHazard(GAME.p.x, GAME.p.y, 60, 55, this.dmg * 1.3);
+                for(let i = 0; i < (this.enraged ? 6 : 4); i++) {
+                    const a = Math.random() * Math.PI * 2, r = 80 + Math.random() * 110;
+                    GAME.addHazard(GAME.p.x + Math.cos(a) * r, GAME.p.y + Math.sin(a) * r, 60, 60 + i * 6, this.dmg * 1.3);
+                }
+            } else if(curAtk === 1) {
+                // FROST BREATH: a cone of ice shards that chill (slow) you
+                GAME.dmg("FROST BREATH!", this.x, this.y - 45, '#bfe9ff', true);
+                AU.play(700, 'triangle', 0.25, 0.4);
+                const base = Math.atan2(GAME.p.y - this.y, GAME.p.x - this.x);
+                for(let i = -3; i <= 3; i++) {
+                    const ang = base + i * 0.16;
+                    GAME.enemyProjs.push({ x: this.x, y: this.y, vx: Math.cos(ang) * 4.4, vy: Math.sin(ang) * 4.4, life: 110, dmg: this.dmg * 0.9,
+                        w: 18, h: 18, s: ASSETS.proj_ice || ASSETS.e_bullet, rotToVel: true, chill: 90 });
+                }
+            } else {
+                // GLACIER CHARGE: telegraphed slide, then a ring of ice where it stops
+                const angle = Math.atan2(GAME.p.y - this.y, GAME.p.x - this.x);
+                AU.warn();
+                GAME.dmg("GLACIER CHARGE!", this.x, this.y - 45, '#9fe8ff', true);
+                this.telegraph = { type: 'line', x1: this.x, y1: this.y, x2: this.x + Math.cos(angle) * 460, y2: this.y + Math.sin(angle) * 460,
+                    color: '#9fe8ff', width: 14, timer: 40, maxTimer: 40,
+                    onTrigger: () => { this.isDashing = true; this.dashVx = Math.cos(angle) * 12; this.dashVy = Math.sin(angle) * 12; this.dashFrames = 34; this.dashEndRing = true; AU.play(140, 'sawtooth', 0.3, 0.5); GAME.shake = 10; } };
+            }
+            return;
+        }
+
         // 6. CHAOS GOD / DEFAULT BOSS (Map 5 Boss)
         if(true) {
             if(curAtk === 0) {
@@ -4642,13 +4875,17 @@ class Enemy extends Ent {
         AU.play(90, 'sawtooth', 0.5, 0.7); AU.play(70, 'square', 0.6, 0.5);
         this.bossRing(12, 3.0);
     }
-    // PHASE 3 (25% HP): calls 4 minions once
+    // PHASE 3 (25% HP): FURY - attacks even faster + calls 6 minions once
     summonMinions() {
         this.summoned = true;
+        this.fury = true;
+        this.attackTimer = Math.min(this.attackTimer, 40);
+        GAME.spawnShockwave(this.x, this.y, '#ffd700', 180, 26, 5);
+        GAME.dmg("FURY!", this.x, this.y - 75, '#ffd700', true);
         const pool = (GAME.map && GAME.map.enemies) || ['e_slime'];
         const types = pool.slice(-2);
-        for(let i = 0; i < 4; i++) {
-            const a = (i / 4) * Math.PI * 2;
+        for(let i = 0; i < 6; i++) {
+            const a = (i / 6) * Math.PI * 2;
             const m = new Enemy(types[i % types.length], this.x + Math.cos(a) * 80, this.y + Math.sin(a) * 80, (GAME.map && GAME.map.diff) || 1);
             GAME.es.push(m);
             GAME.spawnShockwave(m.x, m.y, '#d902ee', 40, 12, 3);
@@ -4834,13 +5071,44 @@ class Wep {
         this.lvl++; const d = this.data.d_cd[this.lvl-2];
         if(d) {
             if(d.includes('CD')) this.stats.cd -= parseInt(d.match(/\d+/)[0]);
-            if(d.includes('Proj')) this.stats.amt += parseInt(d.match(/\d+/)[0] || 1); 
+            // +N Proj / Strike / Orb / Pumpkin / Skulls = more of them (only "Proj" used to work during a run)
+            if(/Proj|Strike|Orb|Pumpkin|Skull|Shard/.test(d)) this.stats.amt += parseInt((d.match(/\d+/) || [1])[0]);
+            if(d.includes('Pierce')) this.stats.pierceB = (this.stats.pierceB || 0) + parseInt(d.match(/\d+/)[0]);
+            if(d.includes('Spd')) this.stats.spdB = (this.stats.spdB || 0) + parseInt(d.match(/\d+/)[0]) / 100;
+            if(/\d+ Dur/.test(d) && this.stats.type === 'zone') this.stats.durB = (this.stats.durB || 0) + parseInt(d.match(/\d+/)[0]); 
             if(d.includes('Area')) { const pm = d.match(/(\d+)%/); this.stats.area = (this.stats.area||1) + (pm ? parseInt(pm[1]) / 100 : 0.5); }
             if(d.includes('Dmg')) this.stats.dmg += parseInt(d.match(/\d+/)[0]);
             if(d.includes('DEMON')) { this.demon=true; this.stats.dmg*=2; this.stats.cd/=1.5; }
         }
     }
-    upd() { this.cd--; if(this.cd<=0) { this.fire(); this.cd = Math.max(5, this.stats.cd * this.p.stats.cd); } }
+    upd() {
+        if(this.stats.type === 'orb') { this.updSkulls(); return; }
+        this.cd--; if(this.cd<=0) { this.fire(); this.cd = Math.max(5, this.stats.cd * this.p.stats.cd); }
+    }
+    // SKULL RING: one ring that stays around you. (It used to spawn a whole new ring every second and each
+    // skull lived 20s, so ~20 rings piled up = skull spam.) Skulls: 1 -> 2 -> 4 -> 8 -> 12 -> 16.
+    // First 8 sit on the inner ring, the rest on a wider outer ring that spins the other way.
+    updSkulls() {
+        const want = Math.max(1, Math.min(SKULL_MAX, Math.round(this.stats.amt)));
+        if(!this.skulls || (this.skulls.length && !GAME.projs.includes(this.skulls[0]))) this.skulls = [];
+        this.skulls = this.skulls.filter(sk => sk.life > 0);
+        while(this.skulls.length > want) this.skulls.pop().life = 0;
+        while(this.skulls.length < want) {
+            const sk = { x: this.p.x, y: this.p.y, vx: 0, vy: 0, life: 1e9, pierce: 1e9, orbit: true, isSkull: true, hitList: [], tickTimer: 0, angle: 0, dist: 75, dmg: 0, s: ASSETS[this.data.sprite], w: 26, h: 26 };
+            GAME.projs.push(sk); this.skulls.push(sk);
+        }
+        const area = (this.stats.area || 1) * this.p.stats.area;
+        const inner = Math.min(8, want), outer = want - inner;
+        this.ringA = ((this.ringA || 0) + 0.06) % (Math.PI * 2);
+        const spr = this.demon ? (ASSETS[this.data.sprite.replace('w_', 'd_')] || ASSETS[this.data.sprite]) : ASSETS[this.data.sprite];
+        const sz = (this.demon ? 30 : 26) * area, dmg = this.stats.dmg * this.p.stats.might;
+        this.skulls.forEach((sk, i) => {
+            const out = i >= inner, k = out ? i - inner : i, n = out ? outer : inner;
+            sk.ringAngle = out ? -this.ringA * 0.75 + (k + 0.5) * Math.PI * 2 / n : this.ringA + k * Math.PI * 2 / n;
+            sk.dist = (out ? 118 : 75) * area;
+            sk.dmg = dmg; sk.s = spr; sk.w = sk.h = sz; sk.demonSkull = !!this.demon; sk.life = 1e9;
+        });
+    }
     fire() {
         const t=GAME.near(); if(!t && this.stats.type!=='dir' && this.stats.type!=='boom' && this.stats.type!=='melee' && this.stats.type!=='strike' && this.stats.type!=='aura' && this.stats.type!=='orb' && this.stats.type!=='flaming_pumpkin') return;
         
@@ -4868,7 +5136,21 @@ class Wep {
              aura.w = aura.radiusBase * (this.stats.area || 1) * areaMult; // area was missing at Lv1 -> NaN
              aura.h = aura.w;
              aura.dmg = this.stats.dmg * this.p.stats.might;
-             return; 
+             return;
+        }
+
+        // FROST NOVA: a ring of ice shards bursts out of the hero; each hit chills (slows) the enemy
+        if(this.stats.type === 'nova') {
+            const n = Math.max(1, Math.round(this.stats.amt)), off = Math.random() * Math.PI * 2;
+            for(let i = 0; i < n; i++) {
+                const a = off + i * Math.PI * 2 / n;
+                GAME.projs.push({ x: this.p.x, y: this.p.y, vx: Math.cos(a) * 6, vy: Math.sin(a) * 6, life: 55, pierce: 1, hitList: [],
+                    dmg: this.stats.dmg * this.p.stats.might, s: ASSETS[this.demon ? 'proj_ice_d' : 'proj_ice'] || ASSETS.e_bullet,
+                    w: 22 * areaMult, h: 22 * areaMult, rotToVel: true, rotOff: Math.PI / 4, trail: [], trailCol: this.demon ? '#ff6b9a' : '#bfe9ff', chill: 90 });
+            }
+            GAME.spawnShockwave(this.p.x, this.p.y, this.demon ? '#ff6b9a' : '#bfe9ff', 50 * areaMult, 12, 2);
+            AU.play(1200, 'triangle', 0.06, 0.2);
+            return;
         }
 
         for(let i=0;i<this.stats.amt;i++) {
@@ -4889,8 +5171,9 @@ class Wep {
                     const target = GAME.near();
                     if(target) {
                         const a=Math.atan2(target.y-this.p.y,target.x-this.p.x);
-                        p.vx=Math.cos(a)*7; p.vy=Math.sin(a)*7;
-                    } else { p.vx=7; p.vy=0; }
+                        const sp = 7 * (1 + (this.stats.spdB || 0));
+                        p.vx=Math.cos(a)*sp; p.vy=Math.sin(a)*sp;
+                    } else { p.vx=7 * (1 + (this.stats.spdB || 0)); p.vy=0; }
                     // glowing magic bolt with a trail
                     p.s = ASSET_CVS[this.demon ? 'proj_bolt_d' : 'proj_bolt'] || p.s;
                     p.w = p.h = (this.demon ? 24 : 20) * areaMult;
@@ -4902,13 +5185,13 @@ class Wep {
                         (this.p.lastDir || {x:1, y:0});
                     if(dir.x===0 && dir.y===0) dir.x=1;
                     const a=Math.atan2(dir.y, dir.x); 
-                    p.vx=Math.cos(a)*12; p.vy=Math.sin(a)*12; p.pierce=2;
+                    p.vx=Math.cos(a)*12; p.vy=Math.sin(a)*12; p.pierce=2 + (this.stats.pierceB || 0);
                     this.p.lastDir = dir;
                     p.rotToVel = true; p.rotOff = Math.PI / 4; // blade points where it flies
                     p.trail = []; p.trailCol = this.data.sprite === 'w_inferno' ? '#ff8500' : '#e6f0ff';
                 }
                 else if(this.stats.type==='boom') { p.spin = 0.38;  
-                    const a=Math.random()*6.28; p.vx=Math.cos(a)*9; p.vy=Math.sin(a)*9; p.ret=true; p.life=120; p.pierce=99; 
+                    const a=Math.random()*6.28, bsp = 9 * (1 + (this.stats.spdB || 0)); p.vx=Math.cos(a)*bsp; p.vy=Math.sin(a)*bsp; p.ret=true; p.life=120; p.pierce=99; 
                 }
                 else if(this.stats.type==='lob') { p.spin = 0.28;  
                     p.vy=-8; p.vx=(Math.random()-0.5)*4; p.grav=0.4; p.land=this.p.y+(Math.random()*100-50); p.zone=false; p.pierce=99; p.life=100;
@@ -4923,7 +5206,7 @@ class Wep {
                     p.zone = true; 
                     p.isPuddle = false;
                     p.puddleRadius = 55 * areaMult;
-                    p.puddleLife = 240; // 4 seconds puddle duration
+                    p.puddleLife = 240 + (this.stats.durB || 0) * 60; // 4 seconds puddle duration (+ Dur upgrades)
                 }
                 else if(this.stats.type==='strike') { p.isBolt = true; p.boltSeed = Math.floor(Math.random() * 100000); p.boltCol = this.demon ? '#ff6b6b' : (this.n === 'Thunder Claws' ? '#4deeea' : '#ffe14a');  
                     const target = GAME.near();
@@ -4936,16 +5219,6 @@ class Wep {
                     p.angle=i*(Math.PI*2/this.stats.amt); 
                     p.dist=65 * areaMult;
                     p.w = 28 * areaMult; p.h = 28 * areaMult;
-                }
-                else if(this.stats.type==='orb') { 
-                    // Skull Ring: Orbits player continuously with pulsing spectral glow
-                    p.life = 1200; // Long life so it remains persistent and refreshes smoothly
-                    p.pierce = 999; 
-                    p.orbit = true; 
-                    p.isSkull = true;
-                    p.angle = i * (Math.PI * 2 / this.stats.amt) + (GAME.frame * 0.05);
-                    p.dist = 75 * areaMult;
-                    p.w = 26 * areaMult; p.h = 26 * areaMult;
                 }
                 else if(this.stats.type==='expl') { p.trail = []; p.trailCol = '#ff8a1a';  
                      const a=Math.random()*6.28; p.vx=Math.cos(a)*5; p.vy=Math.sin(a)*5; p.pierce=0; p.isExplosive=true;
@@ -5144,7 +5417,7 @@ var GAME = {
         this.paused = true;
         let availableWeps = ['Wand'];
         MAPS.forEach(m => {
-            if(m.id <= SaveSystem.d.unlockedMaps) {
+            if(isMapUnlocked(m.id)) {
                 m.u.forEach(u => {
                     if(u.type !== 'armor' && !availableWeps.includes(u.n)) availableWeps.push(u.n);
                 });
@@ -5236,7 +5509,7 @@ var GAME = {
             LOADOUT_HUD.reset();
             ui.updateAbilityIcon(this.p.data); 
             
-            this.es=[]; this.ps=[]; this.projs=[]; this.enemyProjs=[]; this.boss=[]; this.allies=[]; this.particles=[]; this.dmgNums=[]; this.shockwaves=[];
+            this.es=[]; this.ps=[]; this.projs=[]; this.enemyProjs=[]; this.boss=[]; this.allies=[]; this.particles=[]; this.dmgNums=[]; this.shockwaves=[]; this.hazards=[];
             this.time=0; this.frame=0; this.on=true; this.paused=false; this.pendingChoice=null;
             this.resetCombo();
             this.gold = 0; this.scrap = 0; this.kills = 0; this.lastTime = 0;
@@ -5418,6 +5691,7 @@ var GAME = {
             
             this.projs = [];
             this.enemyProjs = [];
+            this.hazards = [];
             this.allies = [];
             this.particles = [];
             this.dmgNums = [];
@@ -5491,7 +5765,7 @@ var GAME = {
             }
             GAME.es.forEach(e=>e.upd()); GAME.es=GAME.es.filter(e=>!e.d);
             GAME.es.forEach(e=>{ 
-                if(Math.hypot(e.x-GAME.p.x, e.y-GAME.p.y) < (e.boss ? 44 : 30)) GAME.p.hit(e.boss ? e.dmg * 0.7 : e.dmg);  
+                if(Math.hypot(e.x-GAME.p.x, e.y-GAME.p.y) < (e.boss ? 44 : 30)) { if(FROST_TOUCH[e.type] && GAME.p.inv <= 0) GAME.p.chillT = Math.max(GAME.p.chillT || 0, 45); GAME.p.hit(e.boss ? e.dmg * 0.7 : e.dmg); }  
                 if(GAME.allies && GAME.allies.length > 0) {
                     GAME.allies.forEach(a => {
                         if(!a.d && Math.hypot(e.x - a.x, e.y - a.y) < 28) {
@@ -5594,7 +5868,7 @@ var GAME = {
                     }
                 }
                 else if(p.orbit) { 
-                    p.angle += (p.isSaw ? 0.14 : 0.08); 
+                    if(p.ringAngle !== undefined) p.angle = p.ringAngle; else p.angle += (p.isSaw ? 0.14 : 0.08); 
                     const dist = p.dist || 60; 
                     p.x = GAME.p.x + Math.cos(p.angle) * dist; 
                     p.y = GAME.p.y + Math.sin(p.angle) * dist; 
@@ -5613,7 +5887,8 @@ var GAME = {
                         // aura: enemy counts once it is half inside the drawn circle
                         const hitDist = p.isAura ? ((p.w || 110) / 2 + e.w / 4) : (e.w/2 + (p.w/2 || 12));
                         if(Math.hypot(e.x-p.x, e.y-p.y) < hitDist){
-                            if(!p.hitList.includes(e)) {
+                            if(!p.hitList.includes(e) && !(p.isSkull && e.skullT > GAME.frame)) {
+                                if(p.isSkull) e.skullT = GAME.frame + SKULL_HIT_GAP;
                                 if(p.isExplosive) {
                                     // EXPLOSION DETONATION WITH SHOCKWAVE & FIRE EMBERS
                                     const expRadius = 110 * (GAME.p.stats.area || 1);
@@ -5627,6 +5902,7 @@ var GAME = {
                                     GAME.shake = 10;
                                     p.life = 0;
                                 } else {
+                                    if(p.chill) e.chillT = Math.max(e.chillT || 0, p.chill);
                                     e.hit(p.dmg, p.isAura ? 0 : p.vx*0.2, p.isAura ? 0 : p.vy*0.2);
                                     if(!p.isAura) {
                                         GAME.spawnParticles(p.x, p.y, '#fff', 3); // Hit Enemy Effect
@@ -5695,12 +5971,14 @@ var GAME = {
                 } else {
                     p.x += p.vx; p.y += p.vy;
                     if(Math.hypot(p.x-GAME.p.x, p.y-GAME.p.y) < 20) {
+                        if(p.chill && GAME.p.inv <= 0) GAME.p.chillT = Math.max(GAME.p.chillT || 0, p.chill);
                         GAME.p.hit(p.dmg, true, !!p.fromBoss);
                         p.life = 0;
                     }
                 }
             });
             GAME.enemyProjs = GAME.enemyProjs.filter(p=>p.life>0);
+            GAME.updHazards();
             
             GAME.ps.forEach(p=>{
                 if(GAME.paused) return; // Stop processing lookups if game is paused (e.g. chest opened)
@@ -5852,9 +6130,9 @@ var GAME = {
                     const py = p.y - cy;
                     // Spectral glow underneath skull
                     ctx.globalAlpha = 0.4 + Math.sin(GAME.frame * 0.15) * 0.15;
-                    ctx.fillStyle = '#05d9e8';
+                    ctx.fillStyle = p.demonSkull ? '#ff2a6d' : '#05d9e8';
                     ctx.beginPath();
-                    ctx.arc(px, py, 14, 0, Math.PI * 2);
+                    ctx.arc(px, py, w * 0.55, 0, Math.PI * 2);
                     ctx.fill();
                     // Draw skull sprite
                     ctx.globalAlpha = 1.0;
@@ -5957,11 +6235,13 @@ var GAME = {
                 } else {
                     const pw = p.w || 12;
                     const ph = p.h || 12;
-                    ctx.drawImage(p.s, p.x - cx - pw/2, p.y - cy - ph/2, pw, ph);
+                    if(p.rotToVel) { ctx.save(); ctx.translate(p.x - cx, p.y - cy); ctx.rotate(Math.atan2(p.vy, p.vx) + Math.PI / 4); ctx.drawImage(p.s, -pw/2, -ph/2, pw, ph); ctx.restore(); }
+                    else ctx.drawImage(p.s, p.x - cx - pw/2, p.y - cy - ph/2, pw, ph);
                 }
             }
         });
         
+        GAME.drawHazards(ctx, cx, cy);
         GAME.drawAmbient(ctx, cx, cy);
         const g=ctx.createRadialGradient(C.W/2,C.H/2,300,C.W/2,C.H/2,600); g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,0,0,0.7)'); ctx.fillStyle=g; ctx.fillRect(0,0,C.W,C.H);
 
@@ -6170,6 +6450,38 @@ var GAME = {
         ctx.globalAlpha = a;
         if(pr.flip) { ctx.translate(x, 0); ctx.scale(-1, 1); ctx.drawImage(cvs, -sz / 2, y - sz * 0.92, sz, sz); }
         else ctx.drawImage(cvs, x - sz / 2, y - sz * 0.92, sz, sz);
+        ctx.restore();
+    },
+    // ---- ground danger zones (Frost Titan's icicles): a marked circle fills up, then the icicle lands
+    addHazard: function(x, y, r, t, dmg) { (GAME.hazards || (GAME.hazards = [])).push({ x, y, r, t, max: t, dmg }); },
+    updHazards: function() {
+        if(!GAME.hazards || !GAME.hazards.length) return;
+        for(const hz of GAME.hazards) {
+            if(--hz.t > 0) continue;
+            GAME.spawnShockwave(hz.x, hz.y, '#bfe9ff', hz.r + 10, 14, 4);
+            GAME.spawnParticles(hz.x, hz.y, '#e0f6ff', 10);
+            AU.play(900, 'triangle', 0.08, 0.25);
+            if(Math.hypot(hz.x - GAME.p.x, hz.y - GAME.p.y) < hz.r) {
+                if(GAME.p.inv <= 0) GAME.p.chillT = Math.max(GAME.p.chillT || 0, 60);
+                GAME.p.hit(hz.dmg);
+            }
+        }
+        GAME.hazards = GAME.hazards.filter(hz => hz.t > 0);
+    },
+    drawHazards: function(ctx, cx, cy) {
+        if(!GAME.hazards || !GAME.hazards.length) return;
+        ctx.save();
+        for(const hz of GAME.hazards) {
+            const k = 1 - hz.t / hz.max, x = hz.x - cx, y = hz.y - cy;
+            ctx.globalAlpha = 0.9; ctx.strokeStyle = '#bfe9ff'; ctx.lineWidth = 3;
+            ctx.beginPath(); ctx.arc(x, y, hz.r, 0, Math.PI * 2); ctx.stroke();
+            ctx.globalAlpha = 0.15 + k * 0.35; ctx.fillStyle = '#9fe8ff';
+            ctx.beginPath(); ctx.arc(x, y, hz.r * k, 0, Math.PI * 2); ctx.fill();
+            if(ASSET_CVS.proj_ice) { // the icicle falling onto the spot
+                ctx.globalAlpha = 1;
+                ctx.save(); ctx.translate(x, y - (1 - k) * 170); ctx.rotate(Math.PI * 0.75); ctx.drawImage(ASSET_CVS.proj_ice, -14, -14, 28, 28); ctx.restore();
+            }
+        }
         ctx.restore();
     },
     // ---- floating atmosphere particles (fireflies, dust, embers, stars, motes, wisps)
@@ -6401,7 +6713,9 @@ var GAME = {
             const cdF = Math.max(5, st.cd * p.stats.cd);
             let dps;
             if(st.type === 'aura') dps = dmg * 60 / AURA_TICK;
-            else if(st.type === 'melee' || st.type === 'orb') dps = dmg * amt * 60 / 18;
+            else if(st.type === 'orb') dps = dmg * Math.min(Math.min(SKULL_MAX, amt) * 60 / 105, 60 / SKULL_HIT_GAP);
+            else if(st.type === 'melee') dps = dmg * amt * 60 / 18;
+            else if(st.type === 'nova') dps = dmg * Math.min(amt, 3) * 60 / cdF; // only a few shards of the ring hit one target
             else if(st.type === 'zone') dps = dmg * 5 * Math.min(amt * 240 / cdF, 2);
             else dps = dmg * amt * 60 / cdF;
             total += dps;
@@ -6472,7 +6786,7 @@ var GAME = {
         let available = [];
         // Unlocked weapons from beaten worlds + crafted forged weapons
         let unlockedWeps = ['Wand']; 
-        MAPS.forEach(m => { if(m.id <= SaveSystem.d.unlockedMaps) m.u.forEach(u => { if(u.type !== 'armor') unlockedWeps.push(u.n); }); });
+        MAPS.forEach(m => { if(isMapUnlocked(m.id)) m.u.forEach(u => { if(u.type !== 'armor') unlockedWeps.push(u.n); }); });
         if(SaveSystem.d.forged) {
             Object.keys(SaveSystem.d.forged).forEach(fw => {
                 if(SaveSystem.d.forged[fw] && !unlockedWeps.includes(fw)) unlockedWeps.push(fw);
@@ -6489,7 +6803,7 @@ var GAME = {
                 if(lvl < 6) {
                     let desc = WEAPONS[w].d_cd[lvl-1] || "MAXED"; 
                     let icon = WEAPONS[w].sprite;
-                    if (lvl + 1 === 6) { icon = icon.replace('w_', 'd_'); desc = "DEMON UPGRADE"; }
+                    if (lvl + 1 === 6) { icon = icon.replace('w_', 'd_'); desc = "DEMON UPGRADE" + demonExtra(w); }
                     available.push({n:w, l:lvl+1, d:desc, i:icon, type:'weapon'});
                 }
             } else if(!ownsMaxWeps && unlockedWeps.includes(w)) {
@@ -6570,7 +6884,7 @@ var GAME = {
             if(w.lvl < 6) {
                 let desc = WEAPONS[w.n].d_cd[w.lvl-1] || "UPGRADE"; 
                 let icon = WEAPONS[w.n].sprite;
-                if (w.lvl + 1 === 6) { icon = icon.replace('w_', 'd_'); desc = "DEMON UPGRADE"; }
+                if (w.lvl + 1 === 6) { icon = icon.replace('w_', 'd_'); desc = "DEMON UPGRADE" + demonExtra(w.n); }
                 upgrades.push({n:w.n, l:w.lvl+1, d:desc, i:icon, type:'weapon'});
             }
         });
@@ -6707,9 +7021,9 @@ var GAME = {
         // If the player cleared their current progression frontier, unlock the next world and automatically select it.
         // If the player intentionally chose an earlier world (e.g. went back down to World 1), keep their selection on that world.
         if(!isHalloween) {
-            if(clearedId === SaveSystem.d.unlockedMaps && SaveSystem.d.unlockedMaps < 5) {
+            if(clearedId === frontierMapId() && SaveSystem.d.unlockedMaps < CAMPAIGN_ORDER.length) {
                 SaveSystem.d.unlockedMaps++;
-                GAME.selMap = SaveSystem.d.unlockedMaps; // Auto-select next unlocked world!
+                GAME.selMap = frontierMapId(); // Auto-select next unlocked world!
                 SaveSystem.d.selMap = GAME.selMap;
             } else {
                 // Keep the player's chosen replay level selected
@@ -7399,7 +7713,7 @@ function renderBattleScreen() {
     const container = document.getElementById('selected-map-view');
     // Ensure campaign world selection is among standard worlds (1-5)
     let campId = GAME.selMap;
-    if(campId === 6) campId = Math.min(SaveSystem.d.unlockedMaps || 1, 5);
+    if(campId === 6) campId = frontierMapId();
     const m = MAPS.find(item => item.id === campId) || MAPS[0];
     const hwMap = MAPS.find(item => item.id === 6);
     
@@ -7409,7 +7723,7 @@ function renderBattleScreen() {
     hubGrid.className = 'battle-hub-grid';
 
     // 1. STANDARD CAMPAIGN ARENA CARD
-    const u = (m.id <= SaveSystem.d.unlockedMaps);
+    const u = isMapUnlocked(m.id);
     const campRun = SaveSystem.getRun(m.id);
     const hasRun = !!campRun;
     const isCampSelected = (GAME.selMap !== 6);
@@ -7595,7 +7909,7 @@ function armorHowToUnlock(name) {
     const a = ARMORS[name];
     if(a.event) return a.event.how;
     const m = MAPS.find(mm => mm.id === a.arenaId);
-    return `Reach Arena ${a.arenaId}${m ? ' (' + m.n + ')' : ''} to unlock.`;
+    return `Reach Arena ${arenaNum(a.arenaId)}${m ? ' (' + m.n + ')' : ''} to unlock.`;
 }
 function buildArmorPickRow() {
     const name = equippedArmorName();
@@ -7680,7 +7994,7 @@ function showWorldMap() {
     // Show only standard campaign worlds in Campaign Worlds modal; Halloween has its own dedicated event frame!
     const campaignMaps = MAPS.filter(m => !m.isHalloween && m.id !== 6).slice().reverse();
     campaignMaps.forEach(m => {
-        const u = (m.id <= SaveSystem.d.unlockedMaps);
+        const u = isMapUnlocked(m.id);
         const banner = document.createElement('div');
         banner.className = `map-banner ${u?'':'locked'} ${GAME.selMap===m.id?'selected':''}`;
         let heartsHTML = "";
@@ -7840,7 +8154,7 @@ function renderLoadout() {
     const campaignMaps = MAPS.filter(m => !m.isHalloween && m.id !== 6);
     campaignMaps.forEach(m => {
         const group = document.createElement('div'); group.className = 'map-weps-group';
-        group.innerHTML = `<div class="map-weps-title">ARENA ${m.id}: ${m.n}</div>`;
+        group.innerHTML = `<div class="map-weps-title">ARENA ${arenaNum(m.id)}: ${m.n}</div>`;
         const row = document.createElement('div'); row.className = 'weps-row';
         m.u.forEach(u => {
             const isArmor = u.type === 'armor';
@@ -7848,7 +8162,7 @@ function renderLoadout() {
             const data = isArmor ? ARMORS[itemKey] : WEAPONS[itemKey];
             if(!data) return;
 
-            const unlocked = m.id <= parseInt(SaveSystem.d.unlockedMaps);
+            const unlocked = isMapUnlocked(m.id);
             const lvl = isArmor ? (SaveSystem.d.armors[itemKey] || 0) : (SaveSystem.d.weps[itemKey] || 0);
 
             const d = document.createElement('div'); 
@@ -8138,7 +8452,7 @@ function showDetail(item, owned, type, name) {
             right.appendChild(upgradeContainer);
         } else {
              if(item.event) right.insertAdjacentHTML('beforeend', eventLockedHTML(item.event));
-             else right.insertAdjacentHTML('beforeend', `<div style="color:#f00;margin-top:20px">LOCKED</div><div style="color:#aaa;font-size:8px">Reach Arena ${item.arenaId} to unlock</div>`);
+             else right.insertAdjacentHTML('beforeend', `<div style="color:#f00;margin-top:20px">LOCKED</div><div style="color:#aaa;font-size:8px">Reach Arena ${arenaNum(item.arenaId)} to unlock</div>`);
         }
     } else if (type === 'weapon') {
         const img = ASSETS[item.sprite].cloneNode(); 
@@ -8363,10 +8677,23 @@ function setForgeSection(sec) {
     renderForge();
 }
 
+// One forge job at a time. The money used to be taken only AFTER the 1.1s hammer animation,
+// so spam-clicking queued many buys -> negative gold/scrap and overclock tiers past max
+// (a tier past max crashed the OVERCLOCK panel, and it stayed broken after refresh).
 function playAnvilAnimation(onComplete) {
+    if(FORGE.busy) return false;
+    FORGE.busy = true;
+    const fc = document.getElementById('forge-container');
+    if(fc) fc.classList.add('forge-busy');
+    const done = () => {
+        FORGE.busy = false;
+        const f2 = document.getElementById('forge-container');
+        if(f2) f2.classList.remove('forge-busy');
+        if(onComplete) onComplete();
+    };
     const anvilImg = document.getElementById('forge-anvil-img');
     const cvs = document.getElementById('forge-sparks-cvs');
-    if(!anvilImg) { if(onComplete) onComplete(); return; }
+    if(!anvilImg) { done(); return true; }
     
     anvilImg.classList.add('hammering');
     AU.play(180, 'square', 0.15, 0.6); // Deep anvil clink
@@ -8416,8 +8743,9 @@ function playAnvilAnimation(onComplete) {
         AU.play(1200, 'sine', 0.35, 0.7);
         anvilImg.classList.remove('hammering');
         sparkAnim = false;
-        if(onComplete) onComplete();
+        done();
     }, 1100);
+    return true;
 }
 
 function renderForge() {
@@ -8480,12 +8808,17 @@ function renderForge() {
     const contentArea = document.createElement('div');
     contentArea.style.width = '100%';
 
-    if(FORGE.curSection === 'recipes') {
-        renderForgeRecipes(contentArea);
-    } else if (FORGE.curSection === 'enchant') {
-        renderForgeEnchants(contentArea);
-    } else if (FORGE.curSection === 'salvage') {
-        renderForgeSalvage(contentArea);
+    try {
+        if(FORGE.curSection === 'recipes') {
+            renderForgeRecipes(contentArea);
+        } else if (FORGE.curSection === 'enchant') {
+            renderForgeEnchants(contentArea);
+        } else if (FORGE.curSection === 'salvage') {
+            renderForgeSalvage(contentArea);
+        }
+    } catch(e) {
+        console.error('forge section failed', e);
+        contentArea.innerHTML = '<div style="font-size:9px; color:#ff6b81; padding:14px;">This section could not be shown. Switch tabs or reload the page.</div>';
     }
 
     stageCard.appendChild(contentArea);
@@ -8576,8 +8909,10 @@ function renderForgeRecipes(container) {
 }
 
 function craftForgeWeapon(recipeId) {
+    if(FORGE.busy) return;
     const r = FORGE.recipes.find(x => x.id === recipeId);
     if(!r) return;
+    if(SaveSystem.d.forged && SaveSystem.d.forged[r.id]) { ui.toast("ALREADY FORGED!"); return; }
     if(SaveSystem.d.gold < r.reqGold || (SaveSystem.d.scrap || 0) < r.reqScrap) {
         ui.toast("NOT ENOUGH GOLD OR SCRAP!");
         return;
@@ -8591,6 +8926,8 @@ function craftForgeWeapon(recipeId) {
     if(stageText) stageText.innerText = `SMELTING & HAMMERING ${r.n.toUpperCase()}...`;
 
     playAnvilAnimation(() => {
+        if((SaveSystem.d.forged && SaveSystem.d.forged[r.id]) || SaveSystem.d.gold < r.reqGold || (SaveSystem.d.scrap || 0) < r.reqScrap
+            || (r.reqFrags && (SaveSystem.d.pumpkinFrags || 0) < r.reqFrags)) { renderForge(); return; }
         SaveSystem.d.gold -= r.reqGold;
         SaveSystem.d.scrap = Math.max(0, (SaveSystem.d.scrap || 0) - r.reqScrap);
         if(r.reqFrags) {
@@ -8669,7 +9006,7 @@ function renderForgeEnchants(container) {
     `;
 
     FORGE.enchants.forEach(enc => {
-        const curTier = curEnchants[enc.id] || 0;
+        const curTier = Math.max(0, Math.min(enc.maxTier, curEnchants[enc.id] || 0));
         const isMax = curTier >= enc.maxTier;
         const nextScrap = enc.costScrap * (curTier + 1);
         const nextGold = enc.costGold * (curTier + 1);
@@ -8701,8 +9038,15 @@ function renderForgeEnchants(container) {
     container.appendChild(wepCard);
 }
 
-function upgradeForgeEnchant(wepName, enchantId, scrapCost, goldCost) {
-    if((SaveSystem.d.scrap || 0) < scrapCost || SaveSystem.d.gold < goldCost) {
+function upgradeForgeEnchant(wepName, enchantId) {
+    if(FORGE.busy) return; // still hammering the last one
+    const enc = FORGE.enchants.find(e => e.id === enchantId);
+    if(!enc) return;
+    const tierNow = () => ((SaveSystem.d.enchants || {})[wepName] || {})[enchantId] || 0;
+    const costAt = t => ({ scrap: enc.costScrap * (t + 1), gold: enc.costGold * (t + 1) });
+    const canBuy = () => { const t = tierNow(), c = costAt(t); return t < enc.maxTier && (SaveSystem.d.scrap || 0) >= c.scrap && (SaveSystem.d.gold || 0) >= c.gold; };
+    if(tierNow() >= enc.maxTier) { ui.toast("ALREADY AT MAX TIER!"); renderForge(); return; }
+    if(!canBuy()) {
         ui.toast("NOT ENOUGH REAGENTS!");
         return;
     }
@@ -8711,11 +9055,13 @@ function upgradeForgeEnchant(wepName, enchantId, scrapCost, goldCost) {
     if(stageText) stageText.innerText = `INFUSING OVERCLOCK MODULE INTO ${wepName.toUpperCase()}...`;
 
     playAnvilAnimation(() => {
-        SaveSystem.d.scrap -= scrapCost;
-        SaveSystem.d.gold -= goldCost;
+        if(!canBuy()) { renderForge(); return; } // checked again when the money is actually taken
+        const t = tierNow(), c = costAt(t);
+        SaveSystem.d.scrap -= c.scrap;
+        SaveSystem.d.gold -= c.gold;
         if(!SaveSystem.d.enchants) SaveSystem.d.enchants = {};
         if(!SaveSystem.d.enchants[wepName]) SaveSystem.d.enchants[wepName] = {};
-        SaveSystem.d.enchants[wepName][enchantId] = (SaveSystem.d.enchants[wepName][enchantId] || 0) + 1;
+        SaveSystem.d.enchants[wepName][enchantId] = t + 1;
 
         SaveSystem.save();
         AU.coin();
@@ -8758,6 +9104,7 @@ function renderForgeSalvage(container) {
 }
 
 function convertGoldToScrap(goldCost, scrapAmt) {
+    if(FORGE.busy) return;
     if(SaveSystem.d.gold < goldCost) {
         ui.toast("NOT ENOUGH GOLD!");
         return;
@@ -8766,6 +9113,7 @@ function convertGoldToScrap(goldCost, scrapAmt) {
     if(stageText) stageText.innerText = `SMELTING ${goldCost} GOLD INTO +${scrapAmt} SCRAP...`;
 
     playAnvilAnimation(() => {
+        if(SaveSystem.d.gold < goldCost) { renderForge(); return; }
         SaveSystem.d.gold -= goldCost;
         SaveSystem.d.scrap = (SaveSystem.d.scrap || 0) + scrapAmt;
         SaveSystem.save();
@@ -8774,6 +9122,177 @@ function convertGoldToScrap(goldCost, scrapAmt) {
         renderForge();
     });
 }
+
+/* --- ADMIN / TEST MODE (v2.8.0) ---
+   Turned on by importing the admin key. It ONLY works when the game is opened straight from the
+   file on this computer (file://). On a website the admin key acts like any wrong key, admin saves
+   are switched off on load, and save keys exported from an admin save are refused there.
+   Only a hash of the key is stored here, never the key itself. No admin button exists until it's on. */
+function isLocalFile() { return location.protocol === 'file:'; }
+var ADMIN = {
+    H1: '2f6ec92b', H2: '6bf01105', LEN: 21,
+    god: false,
+    isKey: function(k) {
+        const n = String(k || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if(n.length !== this.LEN) return false;
+        let h = 0x811c9dc5, h2 = 0x12345678;
+        for(let i = 0; i < n.length; i++) {
+            h ^= n.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0;
+            h2 = Math.imul(h2 ^ n.charCodeAt(i), 0x5bd1e995) >>> 0; h2 ^= h2 >>> 15;
+        }
+        return h.toString(16) === this.H1 && (h2 >>> 0).toString(16) === this.H2;
+    },
+    on: function() { return isLocalFile() && !!(SaveSystem.d && SaveSystem.d.admin); },
+    refresh: function() {
+        const on = this.on();
+        ['header-admin-btn', 'pause-admin-btn'].forEach(id => { const el = document.getElementById(id); if(el) el.classList.toggle('hidden', !on); });
+        if(!on) { this.god = false; this.close(); }
+    },
+    activate: function() {
+        SaveSystem.d.admin = true;
+        this.unlockAll();
+        this.done("ADMIN MODE ON - EVERYTHING UNLOCKED!");
+        this.close();
+        GAME.selMap = SaveSystem.d.selMap || 1;
+        if(ui) ui.startGame();
+    },
+    unlockAll: function() {
+        const d = SaveSystem.d;
+        d.unlockedMaps = CAMPAIGN_ORDER.length;
+        d.heroes = HEROES.map(h => h.id);
+        if(!d.weps) d.weps = {}; if(!d.armors) d.armors = {}; if(!d.forged) d.forged = {};
+        Object.keys(WEAPONS).forEach(w => { d.weps[w] = 5; if(WEAPONS[w].forged) d.forged[w] = true; });
+        Object.keys(ARMORS).forEach(a => { d.armors[a] = 5; });
+        d.hwWins = Math.max(1, d.hwWins || 0);
+        d.passPro = true;
+        d.gold = Math.max(d.gold || 0, 1000000);
+        d.scrap = Math.max(d.scrap || 0, 100000);
+        d.pumpkinFrags = Math.max(d.pumpkinFrags || 0, 9);
+    },
+    // save + redraw every menu that shows unlocks or money
+    done: function(msg) {
+        SaveSystem.save(true);
+        SaveSystem.upd();
+        this.refresh();
+        try { renderBattleScreen(); } catch(e) {}
+        try { renderHeroes(); } catch(e) {}
+        try { renderSeasonPass(); } catch(e) {}
+        try { renderForge(); } catch(e) {}
+        try { renderLoadout(); } catch(e) {}
+        if(msg) ui.toast(msg, 'success');
+        if(!document.getElementById('modal-admin').classList.contains('hidden')) this.render();
+    },
+    give: function(k, n) { SaveSystem.d[k] = (SaveSystem.d[k] || 0) + n; this.done('+' + n.toLocaleString() + ' ' + k.toUpperCase()); },
+    overclocks: function(max) {
+        const d = SaveSystem.d; d.enchants = {};
+        if(max) Object.keys(WEAPONS).forEach(w => { d.enchants[w] = {}; FORGE.enchants.forEach(e => { d.enchants[w][e.id] = e.maxTier; }); });
+        this.done(max ? 'ALL OVERCLOCKS MAXED' : 'OVERCLOCKS CLEARED');
+    },
+    ranks: function(r) {
+        const d = SaveSystem.d;
+        Object.keys(WEAPONS).forEach(w => { if(r > 0 || !WEAPONS[w].forged) d.weps[w] = r; else d.weps[w] = Math.min(d.weps[w] || 1, 1); });
+        Object.keys(ARMORS).forEach(a => { d.armors[a] = r; });
+        this.done('ALL ARMORY RANKS SET TO ' + r);
+    },
+    arenas: function(n) { SaveSystem.d.unlockedMaps = n; if(!isMapUnlocked(GAME.selMap) && GAME.selMap !== 6) { GAME.selMap = frontierMapId(); SaveSystem.d.selMap = GAME.selMap; } this.done(n + ' ARENAS OPEN'); },
+    turnOff: function() { SaveSystem.d.admin = false; this.god = false; this.done('ADMIN MODE OFF (import the admin key again to turn it back on)'); this.close(); },
+
+    /* ---- in-run tools ---- */
+    giveWeapon: function() {
+        const p = GAME.p; if(!GAME.on || !p) return;
+        const name = document.getElementById('adm-wep').value;
+        const lvl = Math.max(1, Math.min(6, parseInt(document.getElementById('adm-lvl').value) || 1));
+        const slotSel = document.getElementById('adm-slot').value;
+        let idx = p.weps.findIndex(w => w.n === name); // already carried -> rebuilt at the chosen level
+        if(idx < 0) idx = slotSel === 'auto' ? (p.weps.length < 3 ? p.weps.length : 2) : Math.min(parseInt(slotSel), p.weps.length);
+        const old = p.weps[idx];
+        if(old) this.dropWeapon(old);
+        const w = new Wep(p, name);
+        for(let i = 1; i < lvl; i++) w.levelUp();
+        p.weps[idx] = w;
+        LOADOUT_HUD.reset(); ui.updHUD(); GAME.saveRun(true);
+        ui.toast(`${name.toUpperCase()} ${lvl >= 6 ? 'DEMON' : 'LV ' + lvl} IN SLOT ${idx + 1}`, 'success');
+        this.render();
+    },
+    removeWeapon: function(i) {
+        const p = GAME.p; if(!p || !p.weps[i] || p.weps.length <= 1) return;
+        this.dropWeapon(p.weps[i]); p.weps.splice(i, 1);
+        LOADOUT_HUD.reset(); ui.updHUD(); GAME.saveRun(true); this.render();
+    },
+    // weapons that keep things alive on the field (skulls, Dark Magic aura) clean up after themselves
+    dropWeapon: function(w) {
+        if(w.skulls) { const mine = new Set(w.skulls); GAME.projs = GAME.projs.filter(pr => !mine.has(pr)); w.skulls = []; }
+        if(w.stats && w.stats.type === 'aura') GAME.projs = GAME.projs.filter(pr => !pr.isAura); // the aura resets its own life every frame
+    },
+    givePassive: function(id) {
+        const p = GAME.p, pd = PASSIVES.find(x => x.id === id); if(!GAME.on || !p || !pd) return;
+        if((p.passiveLevels[id] || 0) >= 5) { ui.toast(pd.name.toUpperCase() + ' IS MAXED'); return; }
+        if(!p.passiveOrder) p.passiveOrder = [];
+        if(!p.passiveOrder.includes(id)) p.passiveOrder.push(id);
+        p.passiveLevels[id] = (p.passiveLevels[id] || 0) + 1;
+        p.stats[pd.stat] += pd.val;
+        if(pd.stat === 'health') { const oldM = p.mhp; p.mhp = p.data.hp * (1 + p.stats.health * 0.2); p.hp += p.mhp - oldM; }
+        LOADOUT_HUD.reset(); ui.updHUD(); this.render();
+    },
+    maxPassives: function() { PASSIVES.forEach(pd => { while((GAME.p.passiveLevels[pd.id] || 0) < 5) this.givePassive(pd.id); }); },
+    toggleGod: function() { this.god = !this.god; ui.toast('GOD MODE ' + (this.god ? 'ON' : 'OFF')); this.render(); },
+    heal: function() { if(GAME.p) { GAME.p.hp = GAME.p.mhp; ui.updHUD(); ui.toast('HEALED'); } },
+    resume: function() { this.close(); const ov = document.getElementById('overlay-pause'); if(ov) ov.classList.add('hidden'); GAME.paused = !!GAME.pendingChoice; },
+    levelUp: function() { if(!GAME.on || !GAME.p) return; this.resume(); GAME.p.gain(Math.max(1, GAME.p.nxp - GAME.p.xp)); },
+    clearEnemies: function() {
+        GAME.es.forEach(e => { if(!e.boss) e.d = true; });
+        GAME.es = GAME.es.filter(e => !e.d); GAME.enemyProjs = []; GAME.hazards = [];
+        ui.toast('ENEMIES CLEARED'); this.render();
+    },
+    jump: function(t) {
+        if(!GAME.on) return;
+        GAME.time = t; GAME.frame = t * 60;
+        if(t > 300) GAME.mid = true;
+        ui.toast('TIME SET TO ' + Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'));
+        this.render();
+    },
+    spawn: function(final) {
+        const m = GAME.map; if(!GAME.on || !m) return;
+        if(final) { GAME.fin = true; GAME.spawnBoss(m.boss, m.bossName); }
+        else { const mn = m.mini || { t: m.boss, n: 'ELITE GUARDIAN' }; GAME.mid = true; GAME.spawnBoss(mn.t, mn.n); }
+        this.resume();
+    },
+
+    /* ---- panel ---- */
+    open: function() { if(!this.on()) return; AU.ui(); this.render(); document.getElementById('modal-admin').classList.remove('hidden'); },
+    close: function() { const m = document.getElementById('modal-admin'); if(m) m.classList.add('hidden'); },
+    b: function(label, fn, cls) { return `<button class="btn ${cls || ''}" onclick="${fn}">${label}</button>`; },
+    render: function() {
+        const el = document.getElementById('admin-panel'); if(!el) return;
+        const d = SaveSystem.d, p = GAME.p, inRun = GAME.on && p;
+        let h = `<div class="adm-title">&#9881; ADMIN / TEST PANEL</div><div class="adm-sub">Only works when the game is opened from the file on this computer. Nobody on the website can see or use this.</div>`;
+        h += `<div class="adm-sec">SAVE</div><div class="adm-row">`
+            + this.b('UNLOCK EVERYTHING', "ADMIN.unlockAll();ADMIN.done('EVERYTHING UNLOCKED')", 'btn-green')
+            + this.b('+100K GOLD', "ADMIN.give('gold',100000)") + this.b('+10K SCRAP', "ADMIN.give('scrap',10000)")
+            + this.b('+5K SEASON XP', "ADMIN.give('passXP',5000)") + this.b('+3 PUMPKIN FRAGS', "ADMIN.give('pumpkinFrags',3)") + `</div>`;
+        h += `<div class="adm-row">` + this.b('MAX ALL OVERCLOCKS', 'ADMIN.overclocks(true)') + this.b('CLEAR OVERCLOCKS', 'ADMIN.overclocks(false)')
+            + this.b('ALL ARMORY RANKS 5', 'ADMIN.ranks(5)') + this.b('ALL ARMORY RANKS 0', 'ADMIN.ranks(0)') + `</div>`;
+        h += `<div class="adm-row"><span>ARENAS OPEN:</span>` + CAMPAIGN_ORDER.map((id, k) => this.b(String(k + 1), 'ADMIN.arenas(' + (k + 1) + ')', parseInt(d.unlockedMaps) === k + 1 ? 'btn-cyan' : '')).join('') + `</div>`;
+        if(inRun) {
+            const wOpts = Object.keys(WEAPONS).map(w => `<option value="${w}">${w}</option>`).join('');
+            const lOpts = [1, 2, 3, 4, 5, 6].map(l => `<option value="${l}" ${l === 6 ? 'selected' : ''}>${l === 6 ? 'LV 6 (DEMON)' : 'LV ' + l}</option>`).join('');
+            h += `<div class="adm-sec">THIS RUN - ${GAME.map.n.toUpperCase()} ${Math.floor(GAME.time / 60)}:${String(GAME.time % 60).padStart(2, '0')}</div>`;
+            h += `<div class="adm-row"><select id="adm-wep">${wOpts}</select><select id="adm-lvl">${lOpts}</select>
+                <select id="adm-slot"><option value="auto">AUTO SLOT</option><option value="0">SLOT 1</option><option value="1">SLOT 2</option><option value="2">SLOT 3</option></select>`
+                + this.b('GIVE WEAPON', 'ADMIN.giveWeapon()', 'btn-green') + `</div>`;
+            h += `<div class="adm-row">` + p.weps.map((w, i) => `<span style="color:#05d9e8;">SLOT ${i + 1}: ${w.n} ${w.lvl >= 6 ? 'DEMON' : 'LV ' + w.lvl}</span>` + (p.weps.length > 1 ? this.b('X', 'ADMIN.removeWeapon(' + i + ')', 'btn-red') : '')).join(' ') + `</div>`;
+            h += `<div class="adm-row"><span>PASSIVES:</span>` + PASSIVES.map(pd => this.b(`${pd.name} ${p.passiveLevels[pd.id] || 0}/5`, "ADMIN.givePassive('" + pd.id + "')")).join('') + this.b('MAX ALL', 'ADMIN.maxPassives()', 'btn-cyan') + `</div>`;
+            h += `<div class="adm-row">` + this.b('GOD MODE: ' + (this.god ? 'ON' : 'OFF'), 'ADMIN.toggleGod()', this.god ? 'btn-green' : '')
+                + this.b('HEAL', 'ADMIN.heal()') + this.b('LEVEL UP (PICK A CARD)', 'ADMIN.levelUp()') + this.b('CLEAR ENEMIES', 'ADMIN.clearEnemies()') + `</div>`;
+            h += `<div class="adm-row">` + this.b('JUMP TO 4:50', 'ADMIN.jump(290)') + this.b('JUMP TO 9:50', 'ADMIN.jump(590)')
+                + this.b('SPAWN MINI BOSS', 'ADMIN.spawn(false)', 'btn-red') + this.b('SPAWN FINAL BOSS', 'ADMIN.spawn(true)', 'btn-red') + `</div>`;
+        } else {
+            h += `<div class="adm-sec">THIS RUN</div><div class="adm-note">Start a battle, press PAUSE, then ADMIN TOOLS to give weapons (any level), passives, god mode, time jumps and bosses.</div>`;
+        }
+        h += `<div class="adm-row" style="margin-top:14px;">` + (inRun ? this.b('RESUME GAME', 'ADMIN.resume()', 'btn-green') : '') + this.b('CLOSE', 'ADMIN.close()') + this.b('TURN ADMIN OFF', 'ADMIN.turnOff()', 'btn-red') + `</div>`;
+        el.innerHTML = h;
+    }
+};
 
 /* --- HALLOWEEN 2026 EVENT SYSTEM & LIVE REAL-TIME COUNTDOWN --- */
 var HALLOWEEN_EVENT = {
@@ -9540,6 +10059,17 @@ function applyGearUpgrade(type, key, amount) {
    lastSeenUpdate, the log pops up on the menu. Pressing OK saves it. */
 var UPDATE_LOGS = [
     {
+        date: "October 16, 2026",
+        version: "v2.8.0",
+        notes: [
+            "NEW ARENA - FROZEN PEAKS: The 6th campaign arena, opened by beating the Chaos God (already beat him? beat him once more to open it). Snowy pines, ice crystals, snowmen and falling snow. New enemies: Ice Slimes, Frost Wisps, Yetis and Ice Golems - Yetis and Ice Golems chill you (slow you down) when they touch you. Mini boss YETI KING at 5:00, final boss FROST TITAN at 10:00 with Icicle Rain, Frost Breath and Glacier Charge.",
+            "NEW GEAR: Frost Nova (epic weapon) - a ring of ice shards bursts out of you and chills (slows) every enemy it hits. Upgrades add shards (6 up to 14). Frost Armor (legendary, +14 armor, 62% block). Both unlock with Frozen Peaks. Chilled heroes and enemies glow blue.",
+            "TOUGHER BOSSES: Every final boss has about 45% more health, hits about 20% harder and attacks more often. New FURY phase at 25% health: even faster attacks, bigger bullet rings and 6 minions (was 4). Mini bosses have about 70% more health.",
+            "SKULL RING REWORK: You start with 1 skull and every upgrade adds more - 2, 4, 8, 12, then 16 skulls at DEMON level. The first 8 circle close to you, the rest spin the other way on a wider outer ring. Skull damage 14 -> 16. One enemy can be hit by the ring about 7 times a second, so more skulls mostly means fewer gaps in the ring.",
+            "BUG FIXES: Skull Ring no longer spams skulls (it made a brand-new ring every second and each one lasted 20 seconds, so about 20 rings piled up). Weapon upgrades that did nothing during a run now work: +Strike (Lightning, Thunder Claws), +Pierce (Daggers, Inferno Blades), +Spd (Wand, Cross), +Pumpkin (Pumpkin Launcher), +Orb (Eclipse Scythe) and +Dur (Holy Water, Void Vortex). Forge: spam-clicking INFUSE / FORGE / EXCHANGE no longer charges you several times (gold and scrap could go negative and Overclocks went past max tier), and the OVERCLOCK panel no longer vanishes for good - saves hit by this are fixed automatically (negative gold/scrap back to 0, extra tiers back to max)."
+        ]
+    },
+    {
         date: "October 15, 2026",
         version: "v2.7.0",
         notes: [
@@ -9705,9 +10235,10 @@ var WEP_TYPE_INFO = {
     melee: 'Blades that spin around you',
     expl: 'Fireball that explodes on contact',
     strike: 'Bolt from the sky onto the nearest enemy',
-    orb: 'Skulls that orbit you',
+    orb: 'Skulls that orbit you. Upgrades add skulls: 1, 2, 4, 8, 12, 16',
     aura: 'Pulses damage to everything around you every 0.5s',
-    flaming_pumpkin: 'Pumpkins that land, fizz, then explode'
+    flaming_pumpkin: 'Pumpkins that land, fizz, then explode',
+    nova: 'Ring of ice shards that chill (slow) enemies'
 };
 var ABILITY_CD = { warlock: 240, ninja: 240, paladin: 600, rogue: 600, pyro: 600, knight: 900, necro: 420, druid: 600, viking: 600, angel: 1200, skel_lord: 480 };
 
@@ -9802,12 +10333,12 @@ var TIP = {
         let out = this.head(this.wepIcon(w.n, lvl), w.n, `${demon ? 'DEMON' : 'LV ' + lvl + ' / 6'} &#9670; ${RARITY_NAMES[d.rarity]} WEAPON`, demon ? '#ff2a6d' : rc);
         out += `<div style="color:${demon ? '#ff2a6d' : '#ffd700'};letter-spacing:1px;">${this.stars(Math.min(lvl, 5), 5)}${demon ? ' DEMON' : ''}</div>`;
         out += this.row('DAMAGE', dmg.toFixed(1), '#ffd700');
-        out += this.row(d.type === 'aura' ? 'TICKS' : 'ATTACK EVERY', d.type === 'aura' ? 'every 0.50s' : this.secs(cd), '#05d9e8');
-        out += this.row(d.type === 'orb' ? 'ORBS' : (d.type === 'strike' ? 'STRIKES' : 'PROJECTILES'), w.stats.amt, '#00ff66');
+        out += this.row(d.type === 'aura' ? 'TICKS' : (d.type === 'orb' ? 'ORBIT' : 'ATTACK EVERY'), d.type === 'aura' ? 'every 0.50s' : (d.type === 'orb' ? 'always on' : this.secs(cd)), '#05d9e8');
+        out += this.row(d.type === 'orb' ? 'SKULLS' : (d.type === 'strike' ? 'STRIKES' : (d.type === 'nova' ? 'SHARDS' : 'PROJECTILES')), d.type === 'orb' ? Math.min(SKULL_MAX, w.stats.amt) + ' / ' + SKULL_MAX : w.stats.amt, '#00ff66');
         out += this.row('AREA', Math.round(area * 100) + '%', '#d902ee');
         out += this.note(WEP_TYPE_INFO[d.type] || '');
         out += this.sep();
-        if(lvl < 6) out += this.next('NEXT: ' + (lvl + 1 === 6 ? 'DEMON EVOLUTION (x2 DMG, faster)' : (d.d_cd[lvl - 1] || 'UPGRADE')));
+        if(lvl < 6) out += this.next('NEXT: ' + (lvl + 1 === 6 ? 'DEMON EVOLUTION (x2 DMG' + (d.type === 'orb' ? '' : ', faster') + (demonExtra(w.n) ? ',' + demonExtra(w.n) : '') + ')' : (d.d_cd[lvl - 1] || 'UPGRADE')));
         else out += this.note('FULLY EVOLVED');
         const rank = SaveSystem.d.weps[w.n] || 0;
         if(rank > 0) out += this.note(`ARMORY RANK ${rank}/5: +${rank * 30}% DMG, -${rank * 5}% CD`);
@@ -9967,15 +10498,16 @@ var TIP = {
         let out = this.head(d.sprite, name, `${RARITY_NAMES[d.rarity]} WEAPON &#9670; ${unlocked ? 'RANK ' + rank + ' / 5' : 'LOCKED'}`, RARITY_COLORS[d.rarity]);
         out += this.row('BASE DAMAGE', d.dmg, '#ffd700');
         out += this.row('YOUR DAMAGE', (d.dmg * (1 + rank * 0.3)).toFixed(1), '#ffd700');
-        out += this.row('ATTACK EVERY', this.secs(Math.max(5, d.cd * (1 - rank * 0.05))), '#05d9e8');
-        out += this.row(d.type === 'orb' ? 'ORBS' : 'PROJECTILES', d.amt, '#00ff66');
+        if(d.type === 'orb') out += this.row('ORBIT', 'always on', '#05d9e8');
+        else out += this.row('ATTACK EVERY', this.secs(Math.max(5, d.cd * (1 - rank * 0.05))), '#05d9e8');
+        out += this.row(d.type === 'orb' ? 'SKULLS' : (d.type === 'nova' ? 'SHARDS' : 'PROJECTILES'), d.type === 'orb' ? d.amt + ' (up to ' + SKULL_MAX + ')' : d.amt, '#00ff66');
         out += this.note(WEP_TYPE_INFO[d.type] || '');
         const en = SaveSystem.d.enchants && SaveSystem.d.enchants[name];
         if(en && Object.keys(en).length) out += this.note(`FORGE: ${en.dmg ? '+' + en.dmg * 25 + '% DMG ' : ''}${en.cd ? '-' + en.cd * 12 + '% CD ' : ''}${en.area ? '+' + en.area * 35 + '% AREA ' : ''}${en.amt ? '+' + en.amt + ' PROJ' : ''}`);
         if(d.event) out += this.sep() + `<div class="tt-note" style="color:#ff8500;">&#9670; ${d.event.tag}: ${d.event.desc}. AVAILABLE ${HALLOWEEN_WINDOW}</div>`;
         if(!unlocked) {
             const m = MAPS.find(mm => mm.u.some(u => u.n === name));
-            out += this.sep() + this.note(d.event ? d.event.how : (d.forged ? 'Craft it in THE FORGE.' : (m ? `Unlocks when you reach ${m.n} (Arena ${m.id}).` : '')));
+            out += this.sep() + this.note(d.event ? d.event.how : (d.forged ? 'Craft it in THE FORGE.' : (m ? `Unlocks when you reach ${m.n} (Arena ${arenaNum(m.id)}).` : '')));
         } else if(rank < 5) out += this.sep() + this.next(`UPGRADE: ${Math.floor(500 * Math.pow(rank + 1, 1.5))}G (+30% DMG, -5% CD)`);
         return out;
     },
@@ -9989,7 +10521,7 @@ var TIP = {
         out += this.row('PROJECTILE BLOCK', `${a.blockPct}% (+${rank * 2}% rank)`, '#05d9e8');
         out += this.note('Armor lowers damage from every hit. Level it up during runs (up to DEMON).');
         if(a.event) out += this.sep() + `<div class="tt-note" style="color:#ff8500;">&#9670; ${a.event.tag}: ${a.event.desc}. AVAILABLE ${HALLOWEEN_WINDOW}</div>`;
-        if(!unlocked) out += this.sep() + this.note(a.event ? a.event.how : `Unlocks when you reach Arena ${a.arenaId}.`);
+        if(!unlocked) out += this.sep() + this.note(a.event ? a.event.how : `Unlocks when you reach Arena ${arenaNum(a.arenaId)}.`);
         else if(rank < 5) out += this.sep() + this.next(`UPGRADE: ${Math.floor(500 * Math.pow(rank + 1, 1.5))}G (+1 ARMOR, +2% BLOCK)`);
         return out;
     },
@@ -10026,8 +10558,8 @@ TIP.kinds = {
 
 // Highest unlocked armor (what the player wears when nothing is picked in the Armory)
 function defaultArmorName() {
-    for(let mId = parseInt(SaveSystem.d.unlockedMaps); mId >= 1; mId--) {
-        const mapObj = MAPS.find(m => m.id === mId);
+    for(let k = Math.min(CAMPAIGN_ORDER.length, parseInt(SaveSystem.d.unlockedMaps) || 1) - 1; k >= 0; k--) {
+        const mapObj = MAPS.find(m => m.id === CAMPAIGN_ORDER[k]);
         const armUnlock = mapObj ? mapObj.u.find(u => u.type === 'armor') : null;
         if(armUnlock) return armUnlock.n;
     }
