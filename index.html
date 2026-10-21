@@ -1061,6 +1061,31 @@
         #chest-room .cr-loot-card.rare .cr-loot-name { color: #ffd700; }
         @keyframes crRare { from { box-shadow: 3px 3px 0 #000, 0 0 6px rgba(255,215,0,0.35); } to { box-shadow: 3px 3px 0 #000, 0 0 22px rgba(255,215,0,0.9); } }
         #chest-room .cr-actions { margin-top: 14px; display: flex; gap: 10px; }
+        .daily-row { width: 95%; max-width: 680px; margin-top: 14px; padding: 10px 14px; box-sizing: border-box; display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; background: linear-gradient(90deg, #2a1d06, #16121f); border: 3px solid #ffd700; box-shadow: 4px 4px 0 #000, 0 0 18px rgba(255,215,0,0.18); }
+        .daily-row.done { border-color: #00ff66; box-shadow: 4px 4px 0 #000, 0 0 14px rgba(0,255,102,0.15); }
+        .daily-row .dl-left { flex: 1 1 300px; min-width: 0; }
+        .daily-row .dl-title { font-size: 11px; color: #ffd700; text-shadow: 2px 2px 0 #000, 0 0 10px rgba(255,215,0,0.5); margin-bottom: 6px; }
+        .daily-row .dl-date { font-size: 7px; color: #c9b08a; margin-left: 6px; }
+        .daily-row .dl-info { font-size: 7px; color: #c9c9d9; line-height: 1.7; margin-bottom: 6px; }
+        .daily-row .dl-info b { color: #fff; }
+        .daily-row .dl-mods { display: flex; gap: 6px; flex-wrap: wrap; }
+        .daily-row .dl-mod { font-size: 7px; padding: 4px 6px; color: var(--mc); border: 2px solid var(--mc); background: rgba(0,0,0,0.35); box-shadow: 2px 2px 0 #000; }
+        .daily-row .dl-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+        .daily-row .dl-reward { display: flex; align-items: center; gap: 6px; font-size: 7px; color: #ffd700; line-height: 1.7; }
+        .daily-row .dl-reward img { width: 30px; height: 30px; image-rendering: pixelated; }
+        .daily-row .dl-streak { font-size: 7px; color: #ff8500; text-align: center; line-height: 1.6; }
+        .daily-row .dl-streak b { font-size: 12px; color: #fff; }
+        .daily-row .dl-done { font-size: 8px; color: #00ff66; text-align: center; line-height: 1.6; }
+        .daily-row .dl-done span { font-size: 6.5px; color: #a8b0c8; }
+        .daily-row .dl-play, .daily-row .dl-cont { margin: 0; font-size: 9px; padding: 9px 16px; }
+        .daily-row .dl-btns { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+        .daily-row .dl-small { font-size: 7px; padding: 6px 10px; }
+        .daily-row .dl-saved { margin-top: 7px; font-size: 7px; color: #00ff66; line-height: 1.6; }
+        .daily-row .dl-saved b { color: #fff; }
+        #daily-hud { position: absolute; top: 96px; right: 24px; font-size: 8px; text-align: right; line-height: 1.8; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+        #daily-hud.hidden { display: none; }
+        #daily-hud .dh-t { color: #ffd700; font-size: 9px; }
+        #daily-hud .dh-g { color: #c9c9d9; font-size: 7px; }
         .chest-slots-row { width: 95%; max-width: 680px; margin-top: 14px; padding: 10px 14px 12px; box-sizing: border-box; background: linear-gradient(90deg, #1c1424, #121322); border: 3px solid #6b4a1a; box-shadow: 4px 4px 0 #000; }
         .chest-slots-row .cs-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: 8px; color: #ffd700; letter-spacing: 1px; margin-bottom: 8px; text-shadow: 1px 1px 0 #000; }
         .chest-slots-row .cs-hint { font-size: 6.5px; color: #a08a6a; letter-spacing: 0; }
@@ -1156,6 +1181,7 @@
                 </div>
             </div>
             <div id="timer">00:00</div>
+            <div id="daily-hud" class="hidden"></div>
             <div class="top-stats">
                 <div id="coin-display">GOLD: 0</div>
                 <div id="kill-display">KILLS: 0</div>
@@ -3764,8 +3790,10 @@ var AU = {
 };
 
 /* --- SHORT SAVE KEYS (v2.6.0) ---
-   Format: PSA3-XXXXX-XXXXX-...  Holds progress only (gold, scrap, kills, arenas, heroes, gear ranks,
-   forge, pass). Runs in progress are NOT in the key (they made old keys pages long).
+   Format: PSA3-XXXXX-XXXXX-...  Holds progress (gold, scrap, kills, arenas, heroes, gear ranks,
+   forge, pass) AND (v3.1.0+) every arena run in progress in a SHORT form (~20 numbers per run: arena,
+   hero, time, gold/kills/scrap, HP/XP/level, armor, weapons + levels, passives, stats, live boss HP).
+   Monsters are not stored - they spawn again when you continue.
    Numbers are packed (bit flags / base-6 ranks), written base36, scrambled, plus a 4-char checksum.
    ORDER MATTERS: only ever ADD new heroes/weapons/armor at the END of their lists. */
 var SaveKey = {
@@ -3783,6 +3811,55 @@ var SaveKey = {
     bits: function(flags) { return this.pack(flags.map(f => f ? 1 : 0), 2); },
     toB36: function(n) { return BigInt(n).toString(36); },
     fromB36: function(str) { let n = 0n; for(const ch of str) { const v = this.DIGITS.indexOf(ch); if(v < 0) throw new Error('bad digit'); n = n * 36n + BigInt(v); } return n; },
+    RUN_STATS: ['spd', 'mag', 'area', 'might', 'cd', 'arm', 'greed', 'luck', 'health', 'blockPct'],
+    // one saved arena run -> list of numbers (null = nothing worth saving)
+    runToFields: function(r) {
+        if(!r || !r.p || !MAPS.find(m => m.id === r.mapId) || !(r.p.weps && r.p.weps.length)) return null;
+        const heroes = this.heroIds(), weps = this.wepIds(), arms = this.armorIds(), p = r.p;
+        const pend = r.pending ? ({ levelup: 1, chest: 2 }[r.pending.kind] || 0) : (r.regen || 0);
+        const w = []; (p.weps || []).slice(0, 3).forEach(x => { w.push(weps.indexOf(x.n) + 1, Math.min(7, x.lvl || 1)); });
+        const pl = PASSIVES.map(pp => (p.passiveLevels || {})[pp.id] || 0);
+        const po = (p.passiveOrder || []).map(id => PASSIVES.findIndex(pp => pp.id === id) + 1).filter(v => v > 0);
+        const st = this.RUN_STATS.map(k => Math.round(Math.max(0, ((p.stats || {})[k] || 0)) * 1000));
+        // a boss that was alive: 1 = mini boss, 2 = final boss + its HP in 1/1000
+        let boss = 0;
+        const mp = MAPS.find(m => m.id === r.mapId), live = (r.es || []).find(e => e.boss && e.hp > 0);
+        if(live) boss = (live.bn === mp.bossName ? 2 : 1) * 10000 + Math.max(1, Math.min(1000, Math.round(live.hp / (live.mhp || live.hp) * 1000)));
+        return [r.mapId, Math.max(0, heroes.indexOf(r.heroId)), Math.floor(r.time || 0), Math.floor(r.gold || 0), Math.floor(r.kills || 0), Math.floor(r.scrap || 0),
+            (r.mid ? 1 : 0) | (r.fin ? 2 : 0) | (pend << 2),
+            Math.max(1, Math.round(p.hp || 1)), Math.round(p.mhp || 100), Math.floor(p.xp || 0), Math.floor(p.nxp || 10), Math.floor(p.lvl || 1),
+            p.armorName ? arms.indexOf(p.armorName) + 1 : 0, Math.floor(p.armorLevel || 1),
+            this.pack(w, 64), this.pack(pl, 8), this.pack(po, 8), this.pack(st, 100000), boss];
+    },
+    // list of numbers -> a run object that GAME.resumeRun() can load (null if it doesn't make sense)
+    fieldsToRun: function(f) {
+        if(f.length < 19) return null;
+        const heroes = this.heroIds(), weps = this.wepIds(), arms = this.armorIds(), N = i => Number(f[i]);
+        const mp = MAPS.find(m => m.id === N(0)); if(!mp) return null;
+        const w = this.unpack(f[14], 64, 6), wl = [];
+        for(let i = 0; i < 6; i += 2) if(w[i] > 0 && weps[w[i] - 1]) wl.push({ n: weps[w[i] - 1], lvl: Math.max(1, Math.min(6, w[i + 1])) });
+        if(!wl.length) return null;
+        const pl = this.unpack(f[15], 8, PASSIVES.length), passiveLevels = {};
+        PASSIVES.forEach((pp, i) => { if(pl[i] > 0) passiveLevels[pp.id] = Math.min(5, pl[i]); });
+        const passiveOrder = this.unpack(f[16], 8, PASSIVES.length).filter(v => v > 0 && PASSIVES[v - 1]).map(v => PASSIVES[v - 1].id);
+        const sv = this.unpack(f[17], 100000, this.RUN_STATS.length), stats = {};
+        this.RUN_STATS.forEach((k, i) => stats[k] = sv[i] / 1000);
+        const flags = N(6), bossV = N(18), es = [];
+        if(bossV > 0) {
+            const fin = Math.floor(bossV / 10000) === 2, frac = (bossV % 10000) / 1000, mn = mp.mini || { t: mp.boss, n: 'ELITE GUARDIAN' };
+            es.push({ t: fin ? mp.boss : mn.t, bn: fin ? mp.bossName : mn.n, x: 300, y: 0, boss: true, tier: 4, hpFrac: Math.max(0.001, Math.min(1, frac)), enr: frac <= 0.5, sum: fin && frac <= 0.25 });
+        }
+        const hp = Math.max(1, N(7)), mhp = Math.max(hp, N(8));
+        return {
+            mapId: mp.id, heroId: heroes[Math.min(heroes.length - 1, N(1))] || 'warlock', time: N(2), frame: N(2) * 60,
+            gold: N(3), kills: N(4), scrap: N(5), mid: !!(flags & 1), fin: !!(flags & 2), regen: (flags >> 2) & 3,
+            combo: 0, comboTimer: 0, pending: null, snapshot: null, savedAt: Date.now(), fromKey: true,
+            p: { x: 0, y: 0, hp, mhp, xp: N(9), nxp: Math.max(1, N(10)), lvl: Math.max(1, N(11)), acd: 0,
+                 armorName: N(12) > 0 && arms[N(12) - 1] ? arms[N(12) - 1] : null, armorLevel: Math.max(1, N(13)),
+                 stats, passiveLevels, passiveOrder, weps: wl },
+            es, boss: [], ps: []
+        };
+    },
     checksum: function(str) {
         let h = 0x811c9dc5;
         for(let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
@@ -3822,8 +3899,20 @@ var SaveKey = {
             Math.floor(d.hwWins || 0),                            // Headless Horseman wins (added v2.6.0)
             d.admin ? 1 : 0,                                      // admin/test save (added v2.8.0) - only loads from the local file
             ...[0, 1, 2, 3].map(k => CHEST_TYPES.findIndex(c => c.id === (d.chestSlots || [])[k]) + 1), // chest slots, 0 = empty (added v2.9.0)
-            Math.max(1, Math.min(3, d.duosUnlocked || 1))         // DUOS arenas unlocked (added v3.0.0)
+            Math.max(1, Math.min(3, d.duosUnlocked || 1)),        // DUOS arenas unlocked (added v3.0.0)
+            Math.floor(d.dailyDay || 0), Math.floor(d.dailyStreak || 0) // DAILY CHALLENGE last cleared day + streak (added v3.1.0)
         ];
+        // ARENA RUNS IN PROGRESS (added v3.1.0): count, then for each run [number of fields, ...fields]
+        const runList = Object.values(d.runs || {}).sort((a, b) => (a && b ? a.mapId - b.mapId : 0)).map(r => this.runToFields(r)).filter(Boolean);
+        fields.push(runList.length);
+        runList.forEach(rf => { fields.push(rf.length); rf.forEach(v => fields.push(v)); });
+        // DAILY CHALLENGE RUN IN PROGRESS (added v3.1.0): 0, or 1 + [number of fields, ...run fields, day, modifiers]
+        const dr = d.dailyRun && d.dailyRun.daily ? this.runToFields(d.dailyRun) : null;
+        if(dr) {
+            const mk = Object.keys(DAILY_MODS);
+            dr.push(Math.floor(d.dailyRun.daily.day || 0), this.pack(d.dailyRun.daily.mods.map(k => mk.indexOf(k) + 1), 64));
+            fields.push(1, dr.length); dr.forEach(v => fields.push(v));
+        } else fields.push(0);
         let payload = '';
         fields.forEach(f => { const t = this.toB36(f); payload += this.DIGITS[t.length] + t; });
         const full = payload + this.checksum(payload);
@@ -3881,6 +3970,26 @@ var SaveKey = {
             data.admin = f.length > 20 && Number(f[20]) === 1;
             if(data.admin && !isLocalFile()) return { ok: false }; // admin saves never load on a website
             data.duosUnlocked = f.length > 25 ? clampN(f[25], 1, 3) : 1;
+            data.dailyDay = f.length > 26 ? clampN(f[26], 0, 1e7) : 0;
+            data.dailyStreak = f.length > 27 ? clampN(f[27], 0, 99999) : 0;
+            data.runs = {}; data.dailyRun = null;
+            if(f.length > 28) { // arena runs in progress
+                let at = 29;
+                for(let k = 0; k < Math.min(20, Number(f[28])) && at < f.length; k++) {
+                    const cnt = Number(f[at]), rec = f.slice(at + 1, at + 1 + cnt);
+                    at += 1 + cnt;
+                    try { const run = this.fieldsToRun(rec); if(run) data.runs[run.mapId] = run; } catch(e) {}
+                }
+                data.dailyRun = null;
+                if(at < f.length && Number(f[at]) === 1) { // daily challenge run
+                    const cnt = Number(f[at + 1]), rec = f.slice(at + 2, at + 2 + cnt);
+                    try {
+                        const run = this.fieldsToRun(rec.slice(0, rec.length - 2)), mk = Object.keys(DAILY_MODS);
+                        const mods = this.unpack(rec[rec.length - 1], 64, 2).filter(v => v > 0 && mk[v - 1]).map(v => mk[v - 1]);
+                        if(run && mods.length) { run.daily = { day: Number(rec[rec.length - 2]), mods, map: run.mapId }; data.dailyRun = run; }
+                    } catch(e) {}
+                }
+            }
             data.chestSlots = [0, 1, 2, 3].map(k => { const v = f.length > 21 + k ? Number(f[21 + k]) : 0; return (v >= 1 && v <= CHEST_TYPES.length) ? CHEST_TYPES[v - 1].id : null; });
             return { ok: true, data };
         } catch(e) { return { ok: false }; }
@@ -4054,6 +4163,9 @@ var SaveSystem = {
         if (typeof this.d.hwWins === 'undefined') this.d.hwWins = 0;
         if (this.d.admin && !isLocalFile()) this.d.admin = false;
         if (!(this.d.duosUnlocked >= 1)) this.d.duosUnlocked = 1;
+        if (!(this.d.dailyDay >= 0)) this.d.dailyDay = 0;
+        if (!(this.d.dailyStreak >= 0)) this.d.dailyStreak = 0;
+        if (!this.d.dailyRun || typeof this.d.dailyRun !== 'object' || !this.d.dailyRun.p || !this.d.dailyRun.daily) this.d.dailyRun = null;
         if (typeof CHEST_TYPES !== 'undefined') {
             let slots = Array.isArray(this.d.chestSlots) ? this.d.chestSlots.slice(0, CHEST_SLOTS) : [];
             // early v2.9.0 test builds kept chest COUNTS - move them into slots, best chests first
@@ -4117,7 +4229,14 @@ var SaveSystem = {
 
         const runIds = Object.keys(this.d.runs || {}).filter(mid => this.d.runs[mid]);
         const contBtn = document.getElementById('title-continue-btn');
-        if(contBtn) {
+        const dRun = this.d.dailyRun;
+        const dailyNewest = !!dRun && runIds.every(mid => (this.d.runs[mid].savedAt || 0) <= (dRun.savedAt || 0));
+        if(contBtn) contBtn.dataset.daily = dailyNewest ? '1' : '';
+        if(contBtn && dailyNewest) {
+            const t = dRun.time || 0;
+            contBtn.innerHTML = `&#9654; CONTINUE RUN: DAILY CHALLENGE (${Math.floor(t/60)}:${(t%60).toString().padStart(2,'0')})`;
+            contBtn.classList.remove('hidden');
+        } else if(contBtn) {
             if(runIds.length > 0) {
                 // newest run = the one with the most recent snapshot time, falling back to the selected map
                 let pick = runIds.find(mid => parseInt(mid) === parseInt(this.d.selMap)) || runIds[0];
@@ -4133,12 +4252,12 @@ var SaveSystem = {
             }
         }
         if(autoStatus) {
-            if(runIds.length > 0) {
+            if(runIds.length > 0 || dRun) {
                 const runMapNames = runIds.map(mid => {
                     const found = MAPS.find(m => m.id === parseInt(mid));
                     return found ? found.n : ('MAP ' + mid);
                 }).join(', ');
-                autoStatus.innerHTML = `<span style="color:#00ff66">&#9679;</span> ACTIVE RUNS SAVED: ${runMapNames}`;
+                autoStatus.innerHTML = `<span style="color:#00ff66">&#9679;</span> ACTIVE RUNS SAVED: ${runMapNames}${dRun ? ', Daily Challenge' : ''}`;
             } else if(loadedSuccessfully) {
                 autoStatus.innerHTML = `<span style="color:#00ff66">&#9679;</span> AUTO-SAVE: BROWSER DATA LOADED (${this.d.gold}G / ${this.d.scrap || 0} SCRAP / ${this.d.kills} KILLS)`;
             } else {
@@ -4219,12 +4338,13 @@ var SaveSystem = {
         }
         const keepSeen = this.d.lastSeenUpdate || "";
         const keepVol = this.d.vol, keepAim = this.d.aim;
-        this.d = { ...this.d, ...res.data, runs: {}, runData: null, lastSeenUpdate: keepSeen, vol: keepVol, aim: keepAim, signature: SAVE_SIG };
+        this.d = { ...this.d, ...res.data, runs: res.data.runs || {}, runData: null, lastSeenUpdate: keepSeen, vol: keepVol, aim: keepAim, signature: SAVE_SIG };
         this.applyDefaults();
         this._lastCore = null;
         this.save(true);
         this.refreshTitle(true);
-        ui.toast("SAVE KEY LOADED!", 'success');
+        const nRuns = Object.keys(this.d.runs || {}).length;
+        ui.toast(nRuns ? `SAVE KEY LOADED! ${nRuns} RUN${nRuns > 1 ? 'S' : ''} IN PROGRESS RESTORED` : "SAVE KEY LOADED!", 'success');
         GAME.selMap = this.d.selMap || 1;
         renderBattleScreen();
         renderHeroes();
@@ -4462,8 +4582,9 @@ class Player extends Ent {
             }
         }
 
+        if(DAILY.has('glass')) d *= 2; // daily: GLASS CANNON
         const actualDamage = Math.max(1, d - this.stats.arm);
-        this.hp -= actualDamage; 
+        this.hp -= actualDamage;  
         this.inv = 30; 
         AU.hit();
         GAME.shake = 10; 
@@ -4473,6 +4594,7 @@ class Player extends Ent {
     gain(x) {
         if(this.isP2 && MP.p1 && GAME.p2 === this) { DUO.as(MP.p1, () => MP.p1.gain(x)); return; } // DUOS: one shared XP bar
         if(ADMIN.xp5 && ADMIN.on()) x *= 5; // mod: 5x XP
+        if(DAILY.has('brain') || DAILY.has('giants')) x *= 1.5; // daily: BIG BRAIN / GIANTS
         this.xp+=x;  
         if(this.xp>=this.nxp){ 
             this.xp-=this.nxp; this.lvl++; this.nxp=Math.floor(this.nxp*1.4); 
@@ -4559,10 +4681,11 @@ class Enemy extends Ent {
             this.hp = tune.hp; this.dmg = tune.dmg;
         }
         if(GAME.mp && GAME.mp.mode === 'duos') this.hp *= boss ? 1.7 : 1.5; // two heroes = tougher monsters
+        if(GAME.daily) DAILY.enemy(this, boss); // daily challenge modifiers
         this.baseSpd = this.spd;
         this.rootT = 0;
         this.boss=boss; this.bn=bn;
-        this.elite = !boss && Math.random() < 0.01 + Math.min(1, (GAME.time || 0) / 600) * 0.04;
+        this.elite = !boss && Math.random() < (0.01 + Math.min(1, (GAME.time || 0) / 600) * 0.04) * (DAILY.has('lucky') ? 3 : 1);
         if(this.elite) { this.w=48; this.h=48; this.hp*=5; this.xp=50; }
         this.mhp = this.hp;      // max HP AFTER the elite x5 (was set before it -> bar stayed full)
         this.hpShown = this.hp;  // trailing "damage" bar that slides down after each hit
@@ -5125,6 +5248,7 @@ class Enemy extends Ent {
         GAME.spawnParticles(this.x, this.y, '#ff4757', 3);
     }
     hit(d,kx=0,ky=0) {
+        if(DAILY.has('glass')) d *= 2; // daily: GLASS CANNON
         if(ADMIN.oneHit && ADMIN.on()) d = Math.max(d, this.hp + 1); // mod: one-hit kills
         const isCrit = Math.random() < GAME.p.stats.luck;
         if(isCrit) { d *= 3; GAME.shake=4; } 
@@ -5141,20 +5265,23 @@ class Enemy extends Ent {
         if(this.hp<=0) {
             this.d=true; GAME.kills++; GAME.addKill(); AU.kill();
             GAME.deathPop(this);
-            if(this.boss) { 
-                GAME.drop('chest',this.x,this.y); GAME.vacuum(); 
+            if(DAILY.has('vampire') && GAME.p && GAME.p.hp > 0) GAME.p.hp = Math.min(GAME.p.mhp, GAME.p.hp + 1); // daily: VAMPIRE
+            if(this.boss) {
+                GAME.drop('chest',this.x,this.y); GAME.vacuum();
                 if(this.bn === GAME.map.bossName) GAME.win();
+                else if(GAME.daily && this.mini) { GAME.dmg('DAILY CLEARED!', this.x, this.y - 40, '#ffd700', true); DAILY.end(true); } // daily goal: the 5:00 mini boss
             }
-            else if (this.elite) { GAME.drop(Math.random()<0.5?'chest':'xp_r', this.x, this.y, 20); }
+            else if (this.elite) { GAME.drop((DAILY.has('lucky') || Math.random()<0.5)?'chest':'xp_r', this.x, this.y, 20); }
             else {
                 const r=Math.random();
                 const timeFactor = 1 + (GAME.time / 300); 
                 const heartChance = 0.005 / timeFactor; 
                 
-                if(r < 0.015) GAME.drop('magnet',this.x,this.y); 
-                else if(r < 0.015 + heartChance) GAME.drop('heart',this.x,this.y,15); 
-                else if(r < 0.12) GAME.drop('coin', this.x, this.y, 10); 
-                else if(r < 0.19) GAME.drop('scrap', this.x, this.y, 1); 
+                const goldRush = DAILY.has('gold'), coinCut = goldRush ? 0.23 : 0.12; // daily: GOLD RUSH
+                if(r < 0.015) GAME.drop('magnet',this.x,this.y);
+                else if(r < 0.015 + heartChance && !DAILY.has('vampire')) GAME.drop('heart',this.x,this.y,15);
+                else if(r < coinCut) GAME.drop('coin', this.x, this.y, goldRush ? 30 : 10);
+                else if(r < coinCut + 0.07) GAME.drop('scrap', this.x, this.y, 1);  
                 else {
                     let type = 'xp_b', val = 1;
                     const randXP = Math.random();
@@ -5692,6 +5819,7 @@ var GAME = {
         GAME.pendingChoice = null;
         if(chosen.type !== 'weapon') GAME.p.addWeapon('Wand');
         GAME.apply(chosen);
+        if(DAILY.has('double')) DAILY.extraWeapon(chosen.n);
         GAME.paused = false;
         ui.hideOverlays();
         ui.updHUD();
@@ -5713,11 +5841,12 @@ var GAME = {
         ui.startTransition(() => {
             // Reset Victory/Death State
             this.mid = false; this.fin = false;
+            this.daily = DAILY.pending || null; DAILY.pending = null; DAILY.hideHud(); // DAILY CHALLENGE run?
             const goTitle = document.getElementById('go-title');
             goTitle.innerText = "GAME OVER";
             goTitle.style.color = "#fff";
             
-            if(!GAME.mp) SaveSystem.clearRun(mid); // multiplayer rounds never touch your saved campaign runs 
+            if(!GAME.mp && !this.daily) SaveSystem.clearRun(mid); // multiplayer / daily runs never touch your saved campaign runs  
             SaveSystem.save();
             this.map = MAPS.find(m=>m.id===mid);
             AU.init(); 
@@ -5743,6 +5872,7 @@ var GAME = {
             // Present starter draft card choice!
             this.showStarterDraft();
             if(GAME.mp) MP.afterStart();
+            if(this.daily) DAILY.onStart();
         });
     },
     
@@ -5839,13 +5969,14 @@ var GAME = {
             boss: GAME.boss.map(b => ({t: b.type, x:b.x, y:b.y, hp:b.hp, mhp:b.mhp, bn:b.bn})),
             ps: GAME.ps.map(p => ({t:p.type, x:p.x, y:p.y, v:p.val}))
         };
+        if(GAME.daily) { run.daily = { day: GAME.daily.day, mods: GAME.daily.mods.slice(), map: GAME.daily.map }; SaveSystem.d.dailyRun = run; SaveSystem.save(silent); return; } // daily = its own slot
         SaveSystem.setRun(GAME.map.id, run);
         SaveSystem.save(silent);
     },
 
-    resumeRun: function(targetMapId) {
+    resumeRun: function(targetMapId, runObj) {
         const mid = targetMapId || this.selMap || 1;
-        const r = SaveSystem.getRun(mid) || SaveSystem.d.runData;
+        const r = runObj || SaveSystem.getRun(mid) || SaveSystem.d.runData; // runObj = the saved daily challenge run
         if(!r) return;
         
         ui.startTransition(() => {
@@ -5894,7 +6025,7 @@ var GAME = {
             this.es = []; this.boss = [];
             (r.es || []).forEach(e => {
                 let en = new Enemy(e.t, e.x, e.y, 1, e.boss, e.bn);
-                en.hp = e.hp;
+                en.hp = e.hpFrac !== undefined ? Math.max(1, en.mhp * e.hpFrac) : e.hp; // runs from a save key keep the boss HP as a fraction
                 if(e.mhp) en.mhp = e.mhp;
                 if(en.mhp < en.hp) en.mhp = en.hp; // old saves had elites with too-low max HP
                 en.hpShown = en.hp;
@@ -5936,11 +6067,15 @@ var GAME = {
             this.paused = false;
             this.lastTime = 0;
             this.pendingChoice = r.pending || null;
+            this.daily = r.daily ? { day: r.daily.day, mods: r.daily.mods.slice(), map: r.daily.map } : null;
+            if(this.daily) DAILY.onStart(); else DAILY.hideHud();
 
             requestAnimationFrame(GAME.loop);
             ui.updHUD();
             GAME.draw(); // show the arena behind any re-opened card screen
             if(GAME.showPendingChoice()) ui.toast("PICK UP WHERE YOU LEFT OFF!");
+            else if(r.regen === 1) { r.regen = 0; GAME.lvlUp(); ui.toast("PICK UP WHERE YOU LEFT OFF!"); } // run loaded from a save key
+            else if(r.regen === 2) { r.regen = 0; GAME.openChest(); ui.toast("PICK UP WHERE YOU LEFT OFF!"); }
             else ui.toast("BATTLE RESUMED!");
         });
     },
@@ -5969,6 +6104,8 @@ var GAME = {
             if(GAME.shake > 0) { GAME.shake *= 0.9; if(GAME.shake < 0.5) GAME.shake = 0; }
 
             let spawnRate = Math.max(5, 60 - Math.floor(GAME.time/5));
+            const swarmMod = DAILY.has('swarm'); // daily: SWARM
+            if(swarmMod) spawnRate = Math.max(4, Math.round(spawnRate * 0.8));
             
             // cap on live enemies so big crowds never lag a Chromebook (bosses / minions / swarms still spawn)
             if(GAME.time<600 && GAME.frame%spawnRate===0 && GAME.es.length < MAX_ENEMIES) {
@@ -5977,9 +6114,13 @@ var GAME = {
                 const maxDim = Math.max(C.W, C.H);
                 const a=Math.random()*6.28, r=maxDim/2 + 150;
                 GAME.es.push(new Enemy(et, GAME.p.x+Math.cos(a)*r, GAME.p.y+Math.sin(a)*r, GAME.map.diff));
+                // SWARM: the rest of the pack comes in right next to the first one
+                const pack = swarmMod ? 2 + Math.min(3, Math.floor(GAME.time / 75)) : 0;
+                for(let k = 0; k < pack && GAME.es.length < MAX_ENEMIES; k++)
+                    GAME.es.push(new Enemy(et, GAME.p.x+Math.cos(a)*r + (Math.random()-0.5)*110, GAME.p.y+Math.sin(a)*r + (Math.random()-0.5)*110, GAME.map.diff));
             }
             // SWARM WAVES every 90s (not at the 5:00 mini boss): a ring of enemies closes in
-            if(GAME.time > 0 && GAME.time < 600 && GAME.time % 90 === 0 && GAME.lastWaveT !== GAME.time) {
+            if(GAME.time > 0 && GAME.time < 600 && GAME.time % (swarmMod ? 45 : 90) === 0 && GAME.lastWaveT !== GAME.time) {
                 GAME.lastWaveT = GAME.time;
                 GAME.spawnSwarm();
             }
@@ -7181,7 +7322,7 @@ var GAME = {
     },
     spawnSwarm: function() {
         const type = GAME.pickEnemyType();
-        const count = Math.min(12 + Math.floor(GAME.time / 60) * 2, Math.max(0, MAX_ENEMIES + 60 - GAME.es.length));
+        const count = Math.min(Math.round((12 + Math.floor(GAME.time / 60) * 2) * (DAILY.has('swarm') ? 1.5 : 1)), Math.max(0, MAX_ENEMIES + 60 - GAME.es.length));
         if(count <= 0) return;
         const r = Math.max(C.W, C.H) / 2 + 60;
         const off = Math.random() * Math.PI * 2;
@@ -7428,6 +7569,7 @@ var GAME = {
     quit: function(save, abandon=false) {
         if(typeof GUEST !== 'undefined' && GUEST.on) { ui.hideOverlays(); return MP.guestLeave(); } // DUOS guest leaves
         if(GAME.mp) { GAME.paused = false; ui.hideOverlays(); return MP.roundEnd(false, true); } // leaving a multiplayer round = forfeit
+        if(GAME.daily && !save) { GAME.paused = false; ui.hideOverlays(); return DAILY.end(false, true); } // abandon a daily (SAVE & QUIT saves it like any run)
         const currMapId = (GAME.map && GAME.map.id) ? GAME.map.id : (GAME.selMap || 1);
         const clearRunUi = () => { GAME.pendingChoice = null; GAME.resetCombo(); };
         if(save) {
@@ -7477,6 +7619,7 @@ var GAME = {
     
     over: function() {
         if(GAME.mp) return MP.roundEnd(false);
+        if(GAME.daily) return DAILY.end(false);
         const currMapId = (GAME.map && GAME.map.id) ? GAME.map.id : (GAME.selMap || 1);
         GAME.on=false;
         GAME.pendingChoice = null; GAME.resetCombo(); 
@@ -7502,6 +7645,7 @@ var GAME = {
     
     win: function() {
         if(GAME.mp) return MP.roundEnd(true);
+        if(GAME.daily) return DAILY.end(true);
         const isHalloween = GAME.map && (GAME.map.isHalloween || GAME.map.id === 6);
         const clearedId = GAME.map ? GAME.map.id : 1;
         
@@ -7608,6 +7752,7 @@ var ui = {
         AU.init();
         if(AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume();
         const btn = document.getElementById('title-continue-btn');
+        if(btn && btn.dataset.daily === '1' && SaveSystem.d.dailyRun) return DAILY.resume(); // newest saved run = the daily challenge
         const mid = (btn && parseInt(btn.dataset.mapId)) || GAME.selMap || 1;
         GAME.selMap = mid;
         SaveSystem.d.selMap = mid;
@@ -8373,6 +8518,7 @@ function renderBattleScreen() {
     }
 
     container.appendChild(hubGrid);
+    container.appendChild(buildDailyRow());
     container.appendChild(buildArmorPickRow());
     container.appendChild(buildChestSlotsRow());
 
@@ -10577,6 +10723,150 @@ function rollChest(kind) {
     return { ct, loot, rare };
 }
 // the 4 chest slots on the Battle screen
+/* --- DAILY CHALLENGE (v3.1.0) ---
+   One special run per day: an arena picked from the ones you unlocked + 2 modifiers (1 HARD + 1 TWIST),
+   the same all day (seeded by the date). Goal: survive to 5:00 and beat the mini boss.
+   First clear each day = reward chest + bonus gold / Season XP. Clear days in a row for a STREAK
+   (day 1-2 Silver chest, day 3+ Golden, every 7th day Magic). Retry as often as you like.
+   Daily runs have their OWN save slot (SaveSystem.d.dailyRun): SAVE & QUIT, refresh / lid close and save keys
+   all keep it. They never touch your campaign runs and never unlock arenas.
+   DAILY_MODS order is used by save keys - only ADD new modifiers at the END. */
+var DAILY_MODS = {
+    glass:   { n: 'GLASS CANNON',   hard: true, col: '#ff4757', d: 'You deal 2x damage - but monsters hit you 2x as hard too.' },
+    swarm:   { n: 'SWARM',          hard: true, col: '#ff8500', d: 'Monsters come in PACKS of 3-6 at once, and SWARM waves (a ring of monsters) hit every 45 seconds instead of 90 - and they are 50% bigger.' },
+    haste:   { n: 'HASTE',          hard: true, col: '#ffd700', d: 'Every monster (and the mini boss) moves 35% faster.' },
+    giants:  { n: 'GIANTS',         hard: true, col: '#7bed9f', d: 'Monsters are bigger and have 2x HP - but give +50% XP.' },
+    vampire: { n: 'VAMPIRE',        col: '#e056fd', d: 'No hearts drop - but every kill heals you 1 HP.' },
+    gold:    { n: 'GOLD RUSH',      col: '#ffd700', d: 'Coins drop about twice as often and are worth 3x.' },
+    lucky:   { n: 'LUCKY',          col: '#05d9e8', d: 'Elite monsters show up 3x as often and ALWAYS drop a chest.' },
+    double:  { n: 'DOUBLE TROUBLE', col: '#00ff66', d: 'You start with a 2nd random weapon.' },
+    brain:   { n: 'BIG BRAIN',      col: '#4deeea', d: '+50% XP from everything - level up faster.' }
+};
+var DAILY = {
+    GOAL_T: 300,
+    pending: null,
+    dayNum: function(dt) { dt = dt || new Date(); return Math.floor(Date.UTC(dt.getFullYear(), dt.getMonth(), dt.getDate()) / 86400000); },
+    today: function() {
+        const day = this.dayNum(), rng = makeRng(day * 7919 + 13);
+        const keys = Object.keys(DAILY_MODS), hard = keys.filter(k => DAILY_MODS[k].hard), twist = keys.filter(k => !DAILY_MODS[k].hard);
+        const mods = [hard[Math.floor(rng() * hard.length)], twist[Math.floor(rng() * twist.length)]];
+        const pool = CAMPAIGN_ORDER.slice(0, Math.max(1, parseInt(SaveSystem.d.unlockedMaps) || 1));
+        return { day, mods, map: pool[Math.floor(rng() * pool.length)] };
+    },
+    has: function(k) { return !!(GAME.daily && GAME.daily.mods.indexOf(k) >= 0); },
+    doneToday: function() { return (SaveSystem.d.dailyDay || 0) === this.dayNum(); },
+    // streak still alive = last clear was today or yesterday
+    streak: function() { const d = SaveSystem.d; return (d.dailyDay || 0) >= this.dayNum() - 1 ? (d.dailyStreak || 0) : 0; },
+    rewardFor: function(st) { return st > 0 && st % 7 === 0 ? 'frost' : (st >= 3 ? 'gold' : 'silver'); },
+    timeLeft: function() {
+        const now = new Date(), mid = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        const m = Math.max(0, Math.floor((mid - now) / 60000));
+        return Math.floor(m / 60) + 'H ' + (m % 60) + 'M';
+    },
+    play: function(force) {
+        if(GAME.on || GAME.mp) return;
+        AU.ui();
+        if(SaveSystem.d.dailyRun && !force) return ui.confirm('START A NEW DAILY RUN?<br><span style="color:#aaa">Your saved daily run will be lost.</span>', 'START', () => this.play(true));
+        SaveSystem.d.dailyRun = null;
+        const t = this.today();
+        this.pending = { day: t.day, mods: t.mods, map: t.map };
+        GAME.start(t.map);
+    },
+    resume: function() {
+        const r = SaveSystem.d.dailyRun; if(!r || GAME.on || GAME.mp) return;
+        AU.init(); if(AU.ctx && AU.ctx.state === 'suspended') AU.ctx.resume();
+        GAME.resumeRun(r.mapId, r);
+    },
+    runTime: function(r) { const t = Math.floor((r && r.time) || 0); return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); },
+    // called by GAME.start once the run is set up
+    onStart: function() {
+        const el = document.getElementById('daily-hud'); if(!el) return;
+        el.innerHTML = `<div class="dh-t">&#9733; DAILY CHALLENGE</div>` +
+            GAME.daily.mods.map(k => `<div class="dh-m" style="color:${DAILY_MODS[k].col}">${DAILY_MODS[k].n}</div>`).join('') +
+            `<div class="dh-g">GOAL: BEAT THE 5:00 MINI BOSS</div>`;
+        el.classList.remove('hidden');
+    },
+    hideHud: function() { const el = document.getElementById('daily-hud'); if(el) el.classList.add('hidden'); },
+    // monster tweaks (called from the Enemy constructor)
+    enemy: function(e, boss) {
+        if(this.has('haste')) e.spd *= 1.35;
+        if(this.has('giants') && !boss) { e.hp *= 2; e.w = e.h = 44; }
+    },
+    extraWeapon: function(first) {
+        const pool = runWeaponPool().filter(n => n !== first && !GAME.p.weps.some(w => w.n === n));
+        if(!pool.length) return;
+        const n = pool[Math.floor(Math.random() * pool.length)];
+        GAME.p.addWeapon(n);
+        ui.toast('DOUBLE TROUBLE: +' + n.toUpperCase() + '!', 'success');
+        if(typeof LOADOUT_HUD !== 'undefined' && LOADOUT_HUD.refresh) LOADOUT_HUD.refresh();
+    },
+    // end of a daily run: won = beat the mini boss (or the final boss), quit = left from the pause menu
+    end: function(won, quit) {
+        const dl = GAME.daily; if(!dl) return;
+        GAME.daily = null; this.hideHud();
+        SaveSystem.d.dailyRun = null; // this daily run is over
+        GAME.on = false; GAME.pendingChoice = null; GAME.resetCombo();
+        const d = SaveSystem.d;
+        d.gold += GAME.gold; d.scrap = (d.scrap || 0) + (GAME.scrap || 0); d.kills += GAME.kills;
+        let xp = Math.floor(GAME.kills * 0.25) + Math.floor(GAME.time / 10);
+        if(GAME.time > 5 || GAME.kills > 0) xp = Math.max(5, xp);
+        const lines = [];
+        let title = 'DAILY CHALLENGE FAILED', col = '#ff4757';
+        if(won) {
+            title = 'DAILY CHALLENGE CLEARED!'; col = '#ffd700';
+            if((d.dailyDay || 0) >= dl.day) lines.push((d.dailyDay || 0) === dl.day && dl.day === this.dayNum() ? "You already got today's reward - a new challenge comes at midnight!" : "You already got the reward for that day's challenge.");
+            else {
+                const st = ((d.dailyDay || 0) === dl.day - 1 ? (d.dailyStreak || 0) : 0) + 1;
+                d.dailyDay = dl.day; d.dailyStreak = st;
+                xp += 60; d.gold += 300;
+                const ct = CHEST_TYPES.find(c => c.id === this.rewardFor(st));
+                if(!Array.isArray(d.chestSlots)) d.chestSlots = [null, null, null, null];
+                const free = d.chestSlots.indexOf(null);
+                if(free >= 0) { d.chestSlots[free] = ct.id; lines.push(`DAILY REWARD: ${ct.n}! It's waiting in your chest slots.`); }
+                else { d.gold += 500; lines.push(`CHEST SLOTS FULL - +500 GOLD instead of the ${ct.n}.`); }
+                lines.push(`+300 BONUS GOLD | DAILY STREAK: ${st} DAY${st > 1 ? 'S' : ''}!`);
+            }
+        } else lines.push(quit ? 'You left the daily challenge.' : 'So close! Try again - you can retry as much as you want today.');
+        d.passXP = (d.passXP || 0) + xp;
+        SaveSystem.save();
+        const gt = document.getElementById('go-title');
+        gt.innerText = title; gt.style.color = col;
+        document.getElementById('go-stats').innerText = `KILLS: ${GAME.kills}\nGOLD: +${GAME.gold} | FORGE SCRAP: +${GAME.scrap || 0}\nSEASON PASS XP: +${xp}\n${lines.join('\n')}`;
+        document.getElementById('overlay-gameover').classList.remove('hidden');
+    }
+};
+function buildDailyRow() {
+    const t = DAILY.today(), done = DAILY.doneToday(), st = DAILY.streak(), m = MAPS.find(x => x.id === t.map) || MAPS[0];
+    const ct = CHEST_TYPES.find(c => c.id === DAILY.rewardFor(st + 1));
+    const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+    const sr = SaveSystem.d.dailyRun, srOld = sr && sr.daily && sr.daily.day !== t.day;
+    const srMap = sr && MAPS.find(x => x.id === sr.mapId);
+    const srDate = sr && sr.daily ? new Date(sr.daily.day * 86400000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).toUpperCase() : '';
+    const row = document.createElement('div');
+    row.className = 'daily-row' + (done ? ' done' : '');
+    row.innerHTML = `
+        <div class="dl-left">
+            <div class="dl-title">&#9733; DAILY CHALLENGE <span class="dl-date">${date}</span></div>
+            <div class="dl-info">ARENA: <b>${m.n.toUpperCase()}</b> &middot; GOAL: BEAT THE 5:00 MINI BOSS</div>
+            <div class="dl-mods">${t.mods.map(k => `<span class="dl-mod ${DAILY_MODS[k].hard ? 'hard' : ''}" data-k="${k}" style="--mc:${DAILY_MODS[k].col}">${DAILY_MODS[k].hard ? 'HARD: ' : 'TWIST: '}${DAILY_MODS[k].n}</span>`).join('')}</div>
+            ${sr ? `<div class="dl-saved">SAVED RUN${srOld ? ' FROM ' + srDate : ''}: <b>${DAILY.runTime(sr)}</b> - ${srMap ? srMap.n.toUpperCase() : ''} - LVL ${(sr.p && sr.p.lvl) || 1}${srOld && sr.daily ? ' - ' + sr.daily.mods.map(k => DAILY_MODS[k] ? DAILY_MODS[k].n : k).join(' + ') : ''}</div>` : ''}
+        </div>
+        <div class="dl-right">
+            <div class="dl-reward">${ct && ASSETS[ct.sprite] ? `<img src="${ASSETS[ct.sprite].src}">` : ''}<div><span style="color:${ct ? ct.col : '#fff'}">${done ? 'TOMORROW: ' : ''}${ct ? ct.n : ''}</span><br>+300 GOLD</div></div>
+            <div class="dl-streak">STREAK: <b>${st}</b> DAY${st === 1 ? '' : 'S'}</div>
+            ${done ? `<div class="dl-done">CLEARED &#10003;<br><span>NEW ONE IN ${DAILY.timeLeft()}</span></div>` : ''}
+            ${sr ? `<div class="dl-btns"><button class="btn btn-green dl-cont">CONTINUE ${DAILY.runTime(sr)}</button><button class="btn dl-play dl-small">${done ? 'PLAY AGAIN' : 'NEW RUN'}</button></div>`
+                 : `<button class="btn btn-gold dl-play">${done ? 'PLAY AGAIN' : 'PLAY'}</button>`}
+        </div>`;
+    row.querySelector('.dl-play').onclick = (e) => { e.stopPropagation(); DAILY.play(); };
+    const cb = row.querySelector('.dl-cont'); if(cb) cb.onclick = (e) => { e.stopPropagation(); DAILY.resume(); };
+    row.querySelectorAll('.dl-mod').forEach(el => { const md = DAILY_MODS[el.dataset.k]; TIP.bind(el, () => TIP.simple(md.n, md.col, md.d + (md.hard ? ' (HARD modifier)' : ' (TWIST modifier)'))); });
+    TIP.bind(row.querySelector('.dl-reward'), () => TIP.simple('DAILY REWARD', '#ffd700',
+        'Beat the daily challenge for a reward chest + 300 gold + 60 Season XP (once per day). Clear it on days in a row for a streak: day 1-2 SILVER chest, day 3+ GOLDEN chest, every 7th day a MAGIC chest! Retries are free, but the reward only comes once a day.'));
+    TIP.bind(row.querySelector('.dl-title'), () => TIP.simple('DAILY CHALLENGE', '#ffd700',
+        'A new challenge every day at midnight: an arena you unlocked + one HARD and one TWIST modifier. Survive to 5:00 and beat the mini boss to win. Daily runs are never saved and do not change your campaign.'));
+    return row;
+}
 function buildChestSlotsRow() {
     const slots = (SaveSystem.d.chestSlots || []).slice(0, CHEST_SLOTS);
     while(slots.length < CHEST_SLOTS) slots.push(null);
@@ -11658,8 +11948,21 @@ function applyGearUpgrade(type, key, amount) {
    lastSeenUpdate, the log pops up on the menu. Pressing OK saves it. */
 /* Every update box has an "art" picture, drawn by drawUpdateArt() from the game's own sprites
    (no image files to upload). RULE: every new update box gets an art config showing one of its cool things.
-   art: { map, hero, fx: 'beams'|'skulls'|'swarm'|'chest'|'pumpkins'|'slash'|'duo', boss, foes: [...], extra, seed } */
+   art: { map, hero, fx: 'beams'|'skulls'|'swarm'|'chest'|'pumpkins'|'slash'|'duo', boss, foes: [...], extra, banner, bannerCol, seed } */
 var UPDATE_LOGS = [
+    {
+        date: "October 20, 2026",
+        version: "v3.1.0",
+        art: { map: 2, hero: 'h_knight', fx: 'swarm', foes: ['e_mummy', 'e_skel', 'e_scorp'], boss: 'e_mummy', extra: 'chest_golden', banner: 'DAILY CHALLENGE', bannerCol: '#ffd700', seed: 31 },
+        notes: [
+            "DAILY CHALLENGE (NEW!): A new Daily Challenge bar on the Battle screen. Every day at midnight there's a new challenge: one of the arenas you've unlocked + one HARD modifier and one TWIST modifier. Survive to 5:00 and beat the mini boss to win. Lose? Try again as many times as you want.",
+            "DAILY REWARDS + STREAKS: The first clear each day gives a reward chest + 300 gold + 60 Season XP. Clear it on days in a row to build a streak: day 1-2 SILVER chest, day 3+ GOLDEN chest, and every 7th day a MAGIC chest! Miss a day and your streak starts over.",
+            "HARD MODIFIERS: Glass Cannon (you deal 2x damage but take 2x damage), Swarm (monsters come in PACKS of 3-6 and swarm waves hit every 45 seconds instead of 90), Haste (monsters 35% faster), Giants (bigger monsters with 2x HP, +50% XP).",
+            "TWIST MODIFIERS: Vampire (no hearts, but every kill heals 1 HP), Gold Rush (more coins, worth 3x), Lucky (3x more elite monsters and they always drop a chest), Double Trouble (start with 2 weapons), Big Brain (+50% XP). Hover a modifier on the Battle screen to read what it does.",
+            "SAVE YOUR DAILY RUN: SAVE & QUIT works in the Daily Challenge too. Your daily run has its own save slot (it never touches your arena runs), it survives a page refresh or closing the lid, and it goes in your save key along with your daily streak. Press CONTINUE on the Daily bar or on the title screen to keep going.",
+            "BUG FIXES: Pasting your save key (on another Chromebook or after logging out) didn't bring back your arenas in progress. Now the key also saves every unfinished run - each arena and the Halloween arena on their own - so you can press CONTINUE RUN right where you left off (time, level, HP, weapons, upgrades, gold and kills, and a boss you were fighting keeps its HP). Monsters spawn fresh when you continue."
+        ]
+    },
     {
         date: "October 19, 2026",
         version: "v3.0.0",
@@ -11832,6 +12135,14 @@ function drawUpdateArt(art, key) {
     g.globalAlpha = 1;
     const vg = g.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)');
     g.fillStyle = vg; g.fillRect(0, 0, W, H);
+    if(art.banner) { // big title ribbon across the top
+        g.font = '16px "Press Start 2P", monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        const tw = g.measureText(art.banner).width + 40;
+        g.fillStyle = 'rgba(10,8,20,0.82)'; g.fillRect(W / 2 - tw / 2, 10, tw, 34);
+        g.strokeStyle = art.bannerCol || '#ffd700'; g.lineWidth = 3; g.strokeRect(W / 2 - tw / 2, 10, tw, 34);
+        g.fillStyle = '#000'; g.fillText(art.banner, W / 2 + 2, 29);
+        g.fillStyle = art.bannerCol || '#ffd700'; g.fillText(art.banner, W / 2, 27);
+    }
     try { UPDATE_ART_CACHE[key] = cv.toDataURL('image/png'); } catch(e) { return ''; }
     return UPDATE_ART_CACHE[key];
 }
