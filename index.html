@@ -84,7 +84,19 @@
         /* card picks, chest opening, pause, results, swap totem: the HUD (timer, level, XP bar...) has a higher
            z-index than those screens and covered them on small Chromebook screens - hide it while they are open */
         body.hud-covered #hud, body.hud-covered #boss-container, body.hud-covered #combo-display, body.hud-covered #mp-rival, body.hud-covered #warning-overlay, body.hud-covered #daily-hud, body.hud-covered #hud-mod-btn { visibility: hidden !important; }
-        #ui-layer {  
+        /* PERFORMANCE (v3.7.0) */
+        .offtab, .offtab * { animation-play-state: paused !important; }
+        body.lowperf *, body.lowperf *::before, body.lowperf *::after { animation: none !important; transition: none !important; backdrop-filter: none !important; }
+        body.lowperf #crt-overlay { display: none !important; }
+        body.lowperf .daily-row, body.lowperf .ascend-row, body.lowperf .map-card-large, body.lowperf .halloween-event-frame { box-shadow: 4px 4px 0 #000 !important; }
+        #perf-pop { position: fixed; inset: 0; z-index: 75000; background: rgba(4,5,10,0.9); display: flex; align-items: center; justify-content: center; }
+        #perf-pop .pp-box { width: 92%; max-width: 460px; background: #131427; border: 4px solid #ffd13b; box-shadow: 8px 8px 0 #000; padding: 20px 22px; text-align: center; box-sizing: border-box; }
+        #perf-pop .pp-title { font-size: 13px; color: #ffd13b; margin-bottom: 12px; text-shadow: 2px 2px 0 #000; }
+        #perf-pop .pp-text { font-size: 8px; color: #e0e0f0; line-height: 1.9; }
+        #perf-pop .pp-text b { color: #00ff66; }
+        #perf-pop .pp-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+        #perf-pop .pp-btns .btn { margin: 0; font-size: 9px; padding: 10px 14px; }
+        #ui-layer {   
             position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             pointer-events: none; z-index: 2000; 
         }
@@ -1426,6 +1438,7 @@
                     <div class="settings-container">
                         <div class="setting-row"><span>SOUND FX</span> <div class="toggle-btn on" id="tog-sfx" onclick="ui.toggleSetting('sfx')"></div></div>
                         <div class="setting-row"><span>MOUSE AIM</span> <div class="toggle-btn" id="tog-aim" onclick="ui.toggleSetting('aim')"></div></div>
+                        <div class="setting-row"><span>LOW PERFORMANCE MODE<br><small style="font-size:7px;color:#8a90b0;line-height:1.7;display:block;margin-top:4px;">For Chromebooks / slow devices: fewer effects + monsters on screen, no glow animations. Saves with your save key.</small></span> <div class="toggle-btn" id="tog-perf" onclick="ui.toggleSetting('perf')"></div></div>
                         
                         <div class="setting-row" style="flex-direction:column; align-items:flex-start; gap:8px;">
                             <span style="font-size:10px; color:var(--cyan);">&#9670; AUTO-SAVE STORAGE</span>
@@ -4371,6 +4384,8 @@ var SaveKey = {
         // BARRACKS (added v3.5.0): hero mastery (base 6 per hero), then 2 training slots [hero+1, end time in seconds, mastery level]
         fields.push(this.pack(heroes.map(id => Math.min(5, (d.mastery || {})[id] || 0)), 6));
         [0, 1].forEach(i => { const sl = (d.training || [])[i]; fields.push(sl ? heroes.indexOf(sl.h) + 1 : 0, sl ? Math.floor(sl.end / 1000) : 0, sl ? sl.lvl : 0); });
+        // SETTINGS (added v3.7.0): 1 = sound, 2 = mouse aim, 4 = low performance mode, 8 = performance already chosen, 16 = lag question asked
+        fields.push((d.vol ? 1 : 0) | (d.aim ? 2 : 0) | (d.lowPerf ? 4 : 0) | (d.perfSet ? 8 : 0) | (d.lagAsked ? 16 : 0));
         let payload = '';
         fields.forEach(f => { const t = this.toB36(f); payload += this.DIGITS[t.length] + t; });
         const full = payload + this.checksum(payload);
@@ -4456,6 +4471,7 @@ var SaveKey = {
                     data.training = [0, 1].map(i => { const hi = Number(f[qa + 8 + i * 3]), end = Number(f[qa + 9 + i * 3]) * 1000, lvl = Number(f[qa + 10 + i * 3]);
                         return (hi > 0 && heroes[hi - 1] && end > 0 && lvl >= 1 && lvl <= 5) ? { h: heroes[hi - 1], lvl, end, start: end - BARRACKS.minutes(heroes[hi - 1], lvl) * 60000 } : null; });
                 }
+                if(qa + 14 < f.length) { const sf = Number(f[qa + 14]); data.vol = !!(sf & 1); data.aim = !!(sf & 2); data.lowPerf = !!(sf & 4); data.perfSet = !!(sf & 8); data.lagAsked = !!(sf & 16); } // settings
             }
             data.chestSlots = [0, 1, 2, 3].map(k => { const v = f.length > 21 + k ? Number(f[21 + k]) : 0; return (v >= 1 && v <= CHEST_TYPES.length) ? CHEST_TYPES[v - 1].id : null; });
             return { ok: true, data };
@@ -4523,8 +4539,9 @@ var SaveSystem = {
             this.updSaveHealth();
             const jsonStr = JSON.stringify(this.d);
             try { localStorage.setItem(SAVE_KEYS.main, jsonStr); } catch(e){}
-            try { localStorage.setItem(SAVE_KEYS.backup, jsonStr); } catch(e){}
-            try { sessionStorage.setItem(SAVE_KEYS.session, jsonStr); } catch(e){}
+            this._saveN = (this._saveN || 0) + 1;
+            if(this._saveN % 5 === 1) { try { localStorage.setItem(SAVE_KEYS.backup, jsonStr); } catch(e){} }
+            if(jsonStr.length < 300000) { try { sessionStorage.setItem(SAVE_KEYS.session, jsonStr); } catch(e){} }
             // IndexedDB copy (read back on boot if it is newer / localStorage got wiped)
             this.openDB(db => {
                 if(!db) return;
@@ -4822,7 +4839,9 @@ var SaveSystem = {
         }
         const keepSeen = this.d.lastSeenUpdate || "";
         const keepVol = this.d.vol, keepAim = this.d.aim;
-        this.d = { ...this.d, ...res.data, runs: res.data.runs || {}, runData: null, lastSeenUpdate: keepSeen, vol: keepVol, aim: keepAim, signature: SAVE_SIG };
+        this.d = { ...this.d, ...res.data, runs: res.data.runs || {}, runData: null, lastSeenUpdate: keepSeen, vol: res.data.vol !== undefined ? res.data.vol : keepVol, aim: res.data.aim !== undefined ? res.data.aim : keepAim, signature: SAVE_SIG };
+        IN.useMouse = !!this.d.aim;
+        if(typeof PERF !== 'undefined') PERF.apply(); // settings from the key
         this.applyDefaults();
         this._lastCore = null;
         this.save(true);
@@ -4867,6 +4886,8 @@ var SaveSystem = {
         if(togSfx) togSfx.className = `toggle-btn ${this.d.vol?'on':''}`;
         const togAim = document.getElementById('tog-aim');
         if(togAim) togAim.className = `toggle-btn ${this.d.aim?'on':''}`;
+        const togPerf = document.getElementById('tog-perf');
+        if(togPerf) togPerf.className = `toggle-btn ${this.d.lowPerf?'on':''}`;
 
         // +1 Upgrade Tokens button in header
         const upTxt = document.getElementById('header-upgrade-text');
@@ -4940,11 +4961,14 @@ class Ent {
         const sx=this.x-cx, sy=this.y-cy;
         if(sx<-64||sx>C.W+64||sy<-64||sy>C.H+64)return;
         const b = Math.sin(this.bob)*3;
-        // Multi-layered contact shadow for high visual depth
+        // Multi-layered contact shadow for high visual depth (low performance mode: one flat block)
+        if(PERF.low) { ctx.fillStyle='rgba(0,0,0,0.3)'; ctx.fillRect(Math.round(sx - this.w / 3.2), Math.round(sy + this.h / 2 - 4), Math.round(this.w / 1.6), 4); }
+        else {
         ctx.fillStyle='rgba(0,0,0,0.18)';
         ctx.beginPath(); ctx.ellipse(sx,sy+this.h/2+1,this.w/2.4,5.5,0,0,6.28); ctx.fill();
         ctx.fillStyle='rgba(0,0,0,0.4)';
         ctx.beginPath(); ctx.ellipse(sx,sy+this.h/2-2,this.w/3.2,3.5,0,0,6.28); ctx.fill();
+        }
         ctx.save(); ctx.translate(sx,sy+b);
         if(this.fl) ctx.scale(-1,1);
         // 2-frame walk while moving (bob only changes while walking)
@@ -6529,9 +6553,9 @@ var GAME = {
         if(GAME.mp) return; // multiplayer rounds are not saved
         if(!GAME.on || !GAME.p || GAME.p.hp <= 0) return;
         
-        // Generate live snapshot data URL capturing exact battle state
-        let snapshotDataUrl = null;
-        try {
+        // Generate live snapshot data URL capturing exact battle state (re-used for 20s - making it every save was slow)
+        let snapshotDataUrl = (silent && GAME._snap && Math.abs(GAME.time - (GAME._snapT || 0)) < 20) ? GAME._snap : null;
+        if(!snapshotDataUrl) try {
             const snapCvs = document.createElement('canvas');
             snapCvs.width = 160;
             snapCvs.height = 90;
@@ -6600,7 +6624,7 @@ var GAME = {
             combo: GAME.combo || 0,
             comboTimer: GAME.comboTimer || 0,
             pending: GAME.pendingChoice ? JSON.parse(JSON.stringify(GAME.pendingChoice)) : null,
-            snapshot: snapshotDataUrl,
+            snapshot: (GAME._snap = snapshotDataUrl, GAME._snapT = GAME.time, snapshotDataUrl),
             savedAt: Date.now(),
             p: {
                 x: GAME.p.x, y: GAME.p.y,
@@ -6614,15 +6638,22 @@ var GAME = {
                 passiveOrder: [...(GAME.p.passiveOrder || [])],
                 weps: GAME.p.weps.map(w => ({n: w.n, lvl: w.lvl}))
             },
-            es: GAME.es.map(e => ({t: e.type, x:e.x, y:e.y, hp:e.hp, mhp:e.mhp, tier:e.tier, boss:e.boss, bn:e.bn, elite:e.elite, enr:!!e.enraged, sum:!!e.summoned, dmg:e.dmg})),
+            es: GAME.saveList(GAME.es, 120, e => e.boss).map(e => ({t: e.type, x:Math.round(e.x), y:Math.round(e.y), hp:Math.round(e.hp), mhp:Math.round(e.mhp), tier:e.tier, boss:e.boss, bn:e.bn, elite:e.elite, enr:!!e.enraged, sum:!!e.summoned, dmg:e.dmg})),
             boss: GAME.boss.map(b => ({t: b.type, x:b.x, y:b.y, hp:b.hp, mhp:b.mhp, bn:b.bn})),
-            ps: GAME.ps.map(p => ({t:p.type, x:p.x, y:p.y, v:p.val}))
+            ps: GAME.saveList(GAME.ps, 80).map(p => ({t:p.type, x:Math.round(p.x), y:Math.round(p.y), v:p.val}))
         };
         if(GAME.daily) { run.daily = { day: GAME.daily.day, mods: GAME.daily.mods.slice(), map: GAME.daily.map }; SaveSystem.d.dailyRun = run; SaveSystem.save(silent); return; } // daily = its own slot
         SaveSystem.setRun(GAME.map.id, run);
         SaveSystem.save(silent);
     },
 
+    // nearest N things to the hero (+ anything keep() says must stay, like bosses) - keeps run saves small
+    saveList: function(list, n, keep) {
+        if(list.length <= n) return list;
+        const P = GAME.p, must = keep ? list.filter(keep) : [];
+        const rest = list.filter(o => !(keep && keep(o))).map(o => [(o.x - P.x) * (o.x - P.x) + (o.y - P.y) * (o.y - P.y), o]).sort((a, b) => a[0] - b[0]).slice(0, Math.max(0, n - must.length)).map(a => a[1]);
+        return must.concat(rest);
+    },
     resumeRun: function(targetMapId, runObj) {
         const mid = targetMapId || this.selMap || 1;
         const r = runObj || SaveSystem.getRun(mid) || SaveSystem.d.runData; // runObj = the saved daily challenge run
@@ -6730,8 +6761,9 @@ var GAME = {
     },
 
     loop: function(timestamp) {
-        if(!GAME.on) return; 
-        requestAnimationFrame(GAME.loop); 
+        if(!GAME.on) return;
+        requestAnimationFrame(GAME.loop);
+        PERF.sample(timestamp, 'game');
         if(GAME.paused) return;
 
         if (!GAME.lastTime) GAME.lastTime = timestamp;
@@ -6741,7 +6773,7 @@ var GAME = {
             GAME.lastTime = timestamp - (deltaTime % (1000 / 60));
             GAME.frame++; if(GAME.frame%60===0) { GAME.time++; QUESTS.max('survive', GAME.time); }
             // Periodic Auto-Save of the active battle run every 5 seconds
-            if(GAME.frame % 300 === 0 && !GAME.paused) {
+            if(GAME.frame % 600 === 0 && !GAME.paused) { // every 10s (was 5s - it caused a hitch on Chromebooks)
                 GAME.saveRun(true);
             }
             
@@ -6952,7 +6984,7 @@ var GAME = {
             GAME.projs=GAME.projs.filter(p=>p.life>0);
 
             // PARTICLES
-            if(GAME.particles.length > 700) GAME.particles.splice(0, GAME.particles.length - 700);
+            if(GAME.particles.length > (PERF.low ? 150 : 700)) GAME.particles.splice(0, GAME.particles.length - (PERF.low ? 150 : 700));
             GAME.particles.forEach(pt => {
                 pt.x += pt.vx; pt.y += pt.vy; pt.life--;
                 if(pt.g) { pt.vy += pt.g; pt.vx *= 0.96; }
@@ -7207,7 +7239,7 @@ var GAME = {
                     ctx.restore();
                 } else {
                     // fading trail
-                    if(p.trail) {
+                    if(p.trail && !PERF.low) {
                         p.trail.push(p.x, p.y);
                         if(p.trail.length > 12) p.trail.splice(0, 2);
                         ctx.fillStyle = p.trailCol || '#fff';
@@ -7286,7 +7318,7 @@ var GAME = {
         
         GAME.drawHazards(ctx, cx, cy);
         GAME.drawTotemArrow(ctx, cx, cy);
-        GAME.drawAmbient(ctx, cx, cy);
+        if(!PERF.low) GAME.drawAmbient(ctx, cx, cy); // floating specks off in low performance mode
         const g=ctx.createRadialGradient(C.W/2,C.H/2,300,C.W/2,C.H/2,600); g.addColorStop(0,'transparent'); g.addColorStop(1,'rgba(0,0,0,0.7)'); ctx.fillStyle=g; ctx.fillRect(0,0,C.W,C.H);
 
         // DAMAGE & ACTION NUMBERS (Rendered in arena world coordinates with camera tracking)
@@ -7626,7 +7658,7 @@ var GAME = {
         return dc;
     },
     drawDecals: function(ctx, cx, cy) {
-        if(!FLOOR_DECALS[GAME.map.id]) return;
+        if(PERF.low || !FLOOR_DECALS[GAME.map.id]) return; // floor details off in low performance mode
         const x0 = Math.floor((cx - 60) / DECAL_CELL), x1 = Math.floor((cx + C.W + 60) / DECAL_CELL);
         const y0 = Math.floor((cy - 60) / DECAL_CELL), y1 = Math.floor((cy + C.H + 60) / DECAL_CELL);
         for(let gx = x0; gx <= x1; gx++) for(let gy = y0; gy <= y1; gy++) {
@@ -7972,6 +8004,7 @@ var GAME = {
         ctx.restore();
     },
     spawnParticles: function(x, y, color, count) {
+        if(PERF.low) { count = Math.ceil(count * 0.3); if(GAME.particles.length > 140) return; }
         for(let i=0; i<count; i++) {
             GAME.particles.push({
                 x: x, y: y,
@@ -7982,6 +8015,7 @@ var GAME = {
         }
     },
     spawnShockwave: function(x, y, color='#05d9e8', maxR=60, duration=14, strokeW=3) {
+        if(PERF.low && GAME.shockwaves && GAME.shockwaves.length > 6) return;
         if(GAME.p2 && GAME.mp && GAME.mp.role === 'host') DUO.events.push(['s', Math.round(x), Math.round(y), color, maxR, duration, strokeW]);
         if(!GAME.shockwaves) GAME.shockwaves = [];
         GAME.shockwaves.push({
@@ -8265,8 +8299,9 @@ var GAME = {
     dmg: function(v, x, y, c='#fff', big=false) {
         if(big && GAME.p2 && GAME.mp && GAME.mp.role === 'host') DUO.events.push(['d', String(v), Math.round(x), Math.round(y), c]);
         if(!GAME.dmgNums) GAME.dmgNums = [];
-        // Max 70 active numbers at once to keep arena crystal clear and performant
-        if(GAME.dmgNums.length > 70) GAME.dmgNums.shift();
+        // Max 70 active numbers at once to keep arena crystal clear and performant (low performance mode: 20, small hits mostly skipped)
+        if(PERF.low && !big && GAME.dmgNums.length > 8 && Math.random() < 0.6) return;
+        if(GAME.dmgNums.length > (PERF.low ? 20 : 70)) GAME.dmgNums.shift();
 
         // Subtle scatter so numbers don't perfectly stack
         const offsetX = (Math.random() - 0.5) * 14;
@@ -8787,7 +8822,9 @@ var ui = {
     toggleSetting: function(s) {
         if(s==='sfx') { SaveSystem.d.vol=!SaveSystem.d.vol; document.getElementById('tog-sfx').classList.toggle('on'); }
         if(s==='aim') { SaveSystem.d.aim=!SaveSystem.d.aim; document.getElementById('tog-aim').classList.toggle('on'); IN.useMouse=SaveSystem.d.aim; }
+        if(s==='perf') PERF.set(!SaveSystem.d.lowPerf);
         AU.ui();
+        SaveSystem.save(true); // settings auto-save
     },
     closeModal: function() { AU.ui(); document.getElementById('modal-overlay').classList.add('hidden'); },
     // In-game YES/NO box
@@ -9266,7 +9303,8 @@ var ui = {
         const tab = document.getElementById('tab-heroes'); if(tab) tab.scrollTop = 0;
     },
     switchTab: function(idx) {
-        AU.ui(); ui.curTab = idx; 
+        AU.ui(); ui.curTab = idx;
+        document.querySelectorAll('#screens-container > .menu-screen').forEach((el, i) => el.classList.toggle('offtab', i !== idx)); // pause animations you can't see 
         document.querySelectorAll('.nav-btn').forEach((b, i) => { if(i===idx) b.classList.add('active'); else b.classList.remove('active'); });
         const step = 100 / 6;
         document.getElementById('nav-ind').style.left = (idx * step) + '%';
@@ -9705,6 +9743,65 @@ function showUnlocks(m) {
     });
 }
 
+/* --- PERFORMANCE (v3.7.0) ---
+   LOW PERFORMANCE MODE (Settings): for Chromebooks / 2-4 GB devices. Fewer particles + monsters on screen, no floor
+   decals / ambient specks / trails / soft shadows, no CSS glow animations or CRT lines, static menu background.
+   - First time on a low-memory device (navigator.deviceMemory <= 4 GB or <= 2 CPU cores) it turns itself on and says so.
+   - If the game runs below ~30 fps for a while, a LAG DETECTED screen recommends it (asked once).
+   Saved in the save (d.lowPerf) and in save keys with the other settings. */
+var PERF = {
+    low: false, samples: [], last: 0,
+    lowEnd: function() { const m = navigator.deviceMemory, c = navigator.hardwareConcurrency; return (m && m <= 4) || (c && c <= 2); },
+    set: function(on, quiet) {
+        const d = SaveSystem.d; d.lowPerf = !!on; d.perfSet = true;
+        this.apply();
+        SaveSystem.save(true); SaveSystem.upd && SaveSystem.upd();
+        if(!quiet) ui.toast(on ? 'LOW PERFORMANCE MODE ON - smoother on Chromebooks' : 'LOW PERFORMANCE MODE OFF', 'success');
+    },
+    apply: function() {
+        this.low = !!(SaveSystem.d && SaveSystem.d.lowPerf);
+        document.body.classList.toggle('lowperf', this.low);
+        MAX_ENEMIES = this.low ? 240 : 400;
+        const t = document.getElementById('tog-perf'); if(t) t.className = 'toggle-btn' + (this.low ? ' on' : '');
+    },
+    // first start: low-memory device -> turn it on and tell the player
+    boot: function() {
+        const d = SaveSystem.d; if(!d) return;
+        if(!d.perfSet && this.lowEnd()) {
+            d.lowPerf = true; d.perfSet = true; this.apply(); SaveSystem.save(true);
+            this.popup('LOW-END DEVICE DETECTED', `This device has a small amount of memory${navigator.deviceMemory ? ' (about ' + navigator.deviceMemory + ' GB)' : ''}, so <b>LOW PERFORMANCE MODE</b> is now ON to keep the game smooth. You can change it any time in SETTINGS.`,
+                [['KEEP IT ON', 'btn-green', () => {}], ['TURN IT OFF', '', () => this.set(false)]]);
+        } else if(!d.perfSet) { d.perfSet = true; d.lowPerf = false; }
+        this.apply();
+    },
+    // frame-time watcher (menu + battles): below ~30 fps for 6 seconds -> recommend low performance mode once
+    sample: function(ts, where) {
+        if(!ts || this.low || document.hidden || !SaveSystem.d || SaveSystem.d.lagAsked) { this.last = ts || 0; return; }
+        if(where === 'menu' && GAME.on) { this.last = ts; return; }
+        if(where === 'game' && (GAME.paused || !GAME.on)) { this.last = ts; return; }
+        const dt = this.last ? ts - this.last : 0; this.last = ts;
+        if(!dt || dt > 500) return; // tab switched / paused
+        this.samples.push(dt);
+        if(this.samples.length < 240) return;
+        const avg = this.samples.reduce((a, b) => a + b, 0) / this.samples.length; this.samples = [];
+        if(avg > 34) this.lag(Math.round(1000 / avg));
+    },
+    lag: function(fps) {
+        const d = SaveSystem.d; d.lagAsked = true; SaveSystem.save(true);
+        const wasOn = GAME.on && !GAME.paused; if(wasOn) GAME.paused = true;
+        const resume = () => { if(wasOn && document.getElementById('overlay-pause').classList.contains('hidden')) { GAME.paused = false; GAME.lastTime = 0; } };
+        this.popup('LAG DETECTED', `The game is running slow on this device (about <b>${fps} FPS</b>). Turn on <b>LOW PERFORMANCE MODE</b>? It uses fewer effects and monsters on screen so the game stays smooth. (You can change it any time in SETTINGS.)`,
+            [['TURN ON LOW PERFORMANCE MODE', 'btn-green', () => { this.set(true); resume(); }], ['NO THANKS', '', resume]]);
+    },
+    popup: function(title, html, btns) {
+        let m = document.getElementById('perf-pop'); if(m) m.remove();
+        m = document.createElement('div'); m.id = 'perf-pop';
+        m.innerHTML = `<div class="pp-box"><div class="pp-title">&#9888; ${title}</div><div class="pp-text">${html}</div><div class="pp-btns"></div></div>`;
+        const row = m.querySelector('.pp-btns');
+        btns.forEach(([label, cls, fn]) => { const b = document.createElement('button'); b.className = 'btn ' + cls; b.innerText = label; b.onclick = () => { AU.ui(); m.remove(); fn(); }; row.appendChild(b); });
+        document.body.appendChild(m);
+    }
+};
 /* --- THE BARRACKS (v3.5.0) ---
    Train heroes up to MASTERY 5. One training = +1 mastery; it takes real time (rarer = longer, the same time for
    every level) and keeps going while you're offline / on another device (end times are saved,
@@ -9851,7 +9948,7 @@ var BARRACKS = {
     startScene: function() {
         this.scene = { t: 0, walkers: {}, sparks: [], burst: null };
         if(this.sceneTimer) clearInterval(this.sceneTimer);
-        this.sceneTimer = setInterval(() => { if(ui.curTab === 1 && ui.heroSub === 'barracks' && !GAME.on) this.drawScene(); }, 50);
+        this.sceneTimer = setInterval(() => { if(ui.curTab !== 1 || ui.heroSub !== 'barracks' || GAME.on || document.hidden) return; this.skipN = ((this.skipN || 0) + 1) % 3; if(PERF.low && this.skipN) return; this.drawScene(); }, 50); // low performance mode: ~7 fps
     },
     drawScene: function() {
         const cv = document.getElementById('bk-canvas'); if(!cv) return;
@@ -13061,7 +13158,7 @@ function applyPassReward(reward) {
 
     // Periodic safety auto-save via standard setInterval (runs independently of requestAnimationFrame)
     setInterval(() => {
-        triggerAutoSave();
+        if(!GAME.on) triggerAutoSave(); // in battle the run saves itself every 10s (+ on lid close / tab hide / leaving)
     }, 2000);
 
     const isTabCloseShortcut = (event) => {
@@ -13136,16 +13233,25 @@ var MenuBg = {
         if(!this.canvas) return;
         this.canvas.width = Math.ceil(window.innerWidth / 2);
         this.canvas.height = Math.ceil(window.innerHeight / 2);
+        this.staticDone = false;
     },
-    loop: function() {
+    loop: function(ts) {
         if(!this.ctx) return;
         requestAnimationFrame(this.loop);
-        
+        PERF.sample(ts, 'menu');
+        if(GAME.on && this.cleared) { const lv = document.getElementById('overlay-levelup'); if(!lv || lv.classList.contains('hidden')) return; } // battle covers it
+        if(PERF.low && this.staticDone) return; // low performance mode: one still picture
+        if(ts && this.lastDraw && ts - this.lastDraw < 33) return; // ~30 fps
+        this.lastDraw = ts;
+        this.staticDone = PERF.low;
+        this.cleared = false;
+                
         // Render during menus, and also while in card picking screens (starter draft, level-up, chests)
         const lvlOverlay = document.getElementById('overlay-levelup');
         const isCardPicking = lvlOverlay && !lvlOverlay.classList.contains('hidden');
         if(GAME.on && !isCardPicking) {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.cleared = true;
             return;
         }
 
@@ -13494,9 +13600,11 @@ function applyGearUpgrade(type, key, amount) {
 var UPDATE_LOGS = [
     {
         date: "October 21, 2026",
-        version: "v3.6.1",
+        version: "v3.7.0",
         art: { map: 12, hero: 'h_knight', fx: 'swarm', boss: 'e_astral_seraph', foes: ['e_star_wisp', 'e_void_shade', 'e_star_knight'], extra: 'w_star', banner: 'ASCENDED ARENAS', bannerCol: '#ffd13b', seed: 34 },
         notes: [
+            "LOW PERFORMANCE MODE (NEW!): A new switch in SETTINGS for Chromebooks and slower devices - fewer particles and monsters on screen, no floor details, trails or glow animations, and a still menu background, so the game runs much smoother. On a device with little memory (like a 2-4 GB Chromebook) it turns itself on the first time and tells you. If the game ever runs slow, a LAG DETECTED screen asks if you want to turn it on. It saves automatically, and your save key now keeps ALL your settings (sound, mouse aim, low performance mode).",
+            "LESS LAG FOR EVERYONE: The game used to save your whole battle (every monster plus a little picture) every 2 seconds, which made Chromebooks stutter - battles now save every 10 seconds (and when you close the lid / leave) and the saves are about 3x smaller. The menu background runs at a calmer speed, and glowing animations on tabs you are not looking at stop running.",
             "NO MORE COPY WEAPONS: Some weapons were just a stronger copy of another one - now each one plays its own way. INFERNO BLADES: flaming blades STICK into enemies, burn them, then EXPLODE. VOID VORTEX: throws a small VOID that flies out slowly, pulling enemies toward it and hurting the ones it catches, then fades. VENOM FLASK: poisons enemies - and when a poisoned enemy dies, the poison SPREADS to the ones next to it. STARBURST: places STAR SENTRIES that shoot the nearest enemies on their own.",
             "WEAPON + ABILITY TUNING: The new weapons were too strong - Inferno Blades, Void Vortex, Venom Flask, Starburst, Glacier Spikes, Spore Mines and Meteor Rain all do less damage now, and their effects are smaller and cleaner (no more giant spirals or huge poison clouds). Weapons that shoot more than once (like Lightning, the Wand or Buzzsaw at DEMON) now spread their shots over DIFFERENT enemies instead of piling into one spot.",
             "ABILITIES GROW WITH THE ARENA: Hero abilities used to do the same damage everywhere, so they did nothing in the late arenas. Now ability damage grows with the arena (and how far into the battle you are), plus +10% ABILITY POWER per Mastery level. SKELETON LEGION skeletons are tough enough to survive Arena 8, hit hard, and Mastery 2 and 4 add one more skeleton each.",
@@ -14238,6 +14346,7 @@ window.onload=function() {
     IN.init();
     ui.watchHudCover(); // hide the HUD under card / chest / pause screens
     setInterval(() => { try { BARRACKS.tick(); } catch(e) {} }, 1000); // barracks training timers
+    (function perfBoot() { if(SaveSystem.bootReady) { try { PERF.boot(); } catch(e) {} } else setTimeout(perfBoot, 300); })(); // low-end device check
     resizeGame();
     MenuBg.init();
     document.addEventListener('click', ()=>{if(AU.ctx && AU.ctx.state==='suspended')AU.ctx.resume();});
