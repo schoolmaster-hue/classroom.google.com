@@ -808,6 +808,12 @@
         #crate-multi .cm-dup { font-size: 6.5px; color: #ffd700; }
         #crate-multi .cm-sum { font-size: 8px; color: #8a90b0; text-align: center; min-height: 10px; line-height: 1.6; }
         #crate-multi .cm-ok { margin: 0; font-size: 10px; padding: 10px 34px; }
+        #crate-multi .cm-count { position: absolute; right: -26px; top: -18px; z-index: 3; font-size: 18px; color: #ffd700; background: #1a1206; border: 3px solid #ffd700; padding: 5px 8px; box-shadow: 3px 3px 0 #000; transform: rotate(8deg); text-shadow: 2px 2px 0 #000; }
+        #crate-multi .cm-x { position: absolute; top: 4px; right: 4px; font-size: 8px; color: #000; background: #ffd700; padding: 2px 4px; box-shadow: 2px 2px 0 #000; }
+        .crate-qty .cq-in { font-family: inherit; width: 52px; font-size: 10px; text-align: center; padding: 7px 2px; background: #0d0e1a; color: #fff; border: 2px solid #3d4368; box-shadow: inset 2px 2px 0 #000; -moz-appearance: textfield; }
+        .crate-qty .cq-in:focus { outline: none; border-color: #ffd700; }
+        .crate-qty .cq-in::-webkit-outer-spin-button, .crate-qty .cq-in::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .crate-qty .cq-max { color: #ffd700; border-color: #ffd700; }
         @media (max-width: 560px) { #crate-multi .cm-grid { grid-template-columns: repeat(3, 92px) !important; } #crate-multi .cm-slot { width: 92px; } }
         @keyframes intenseShake {
             0% { transform: translate(0, 0) rotate(0deg); }
@@ -1469,9 +1475,9 @@
                         <div class="hero-shop">
                             <div style="font-size:10px; color:#ffd700; letter-spacing:1px; margin-bottom:4px; font-weight:bold;">RECRUIT CRATE</div>
                             <div id="crate-box" class="crate-box"></div>
-                            <div class="crate-qty" id="crate-qty"><button class="cq on" onclick="ui.setCrateN(1)">x1</button><button class="cq" onclick="ui.setCrateN(3)">x3</button><button class="cq" onclick="ui.setCrateN(5)">x5</button><button class="cq" onclick="ui.setCrateN(10)">x10</button></div>
+                            <div class="crate-qty" id="crate-qty"><button class="cq" onclick="ui.stepCrateN(-1)">-</button><input id="crate-n" class="cq-in" type="number" min="1" max="100" value="1" inputmode="numeric" oninput="ui.setCrateN(this.value, true)" onblur="ui.setCrateN(this.value)" onkeydown="if(event.key==='Enter'){ui.setCrateN(this.value);GAME.buyHeroes(ui.crateN);}event.stopPropagation();"><button class="cq" onclick="ui.stepCrateN(1)">+</button><button class="cq cq-max" onclick="ui.setCrateN(ui.maxCrates())">MAX</button></div>
                             <div id="crate-cost" style="font-size: 10px; margin-bottom: 6px; color: gold; text-shadow: 1px 1px 0 #000;">COST: 500 GOLD</div>
-                            <button class="btn btn-green" id="btn-buy-hero" style="padding:10px 18px; font-size:10px;" onclick="GAME.buyHeroes(ui.crateN || 1)">BUY CRATE</button>
+                            <button class="btn btn-green" id="btn-buy-hero" style="padding:10px 18px; font-size:10px;" onclick="ui.setCrateN(document.getElementById('crate-n').value); GAME.buyHeroes(ui.crateN || 1)">OPEN 1 CRATE</button>
                             <div id="hero-msg" style="color: #05d9e8; font-size: 9px; margin-top: 4px; text-align: center; min-height: 20px; text-shadow: 1px 1px 0 #000;"></div>
                             
                             <div id="active-hero-card" style="width:100%; background:#0a0b14; border:2px solid #2d324d; padding:10px; box-sizing:border-box; margin-top:6px; box-shadow:3px 3px 0 #000;">
@@ -4324,6 +4330,7 @@ function isArmorUnlocked(name) {
     if(ARMORS[name] && ARMORS[name].event) return (SaveSystem.d.hwWins || 0) > 0; // event armor
     for(let m of MAPS) {
         if(isMapEverUnlocked(m.id)) {
+            if(m.id === CAMPAIGN_ORDER[0] && campaignEver() < 2) continue; // v3.12.0: no armor at the start - beat Arena 1 for your first one
             if(m.u.some(u => u.n === name && u.type === 'armor')) return true;
         }
     }
@@ -4397,7 +4404,7 @@ var SaveKey = {
             (r.mid ? 1 : 0) | (r.fin ? 2 : 0) | (pend << 2),
             Math.max(1, Math.round(p.hp || 1)), Math.round(p.mhp || 100), Math.floor(p.xp || 0), Math.floor(p.nxp || 10), Math.floor(p.lvl || 1),
             p.armorName ? arms.indexOf(p.armorName) + 1 : 0, Math.floor(p.armorLevel || 1),
-            this.pack(w, 64), this.pack(pl, 8), this.pack(po, 8), this.pack(st, 100000), boss, Math.max(1, Math.min(99, chestN | 0))];
+            this.pack(w, 64), this.pack(pl, 8), this.pack(po, 8), this.pack(st, 100000), boss, Math.max(1, Math.min(99, chestN | 0)), Math.max(0, Math.floor(r.combo || 0))];
     },
     // list of numbers -> a run object that GAME.resumeRun() can load (null if it doesn't make sense)
     fieldsToRun: function(f) {
@@ -4421,7 +4428,7 @@ var SaveKey = {
         return {
             mapId: mp.id, heroId: heroes[Math.min(heroes.length - 1, N(1))] || 'warlock', time: N(2), frame: N(2) * 60,
             gold: N(3), kills: N(4), scrap: N(5), mid: !!(flags & 1), fin: !!(flags & 2), regen: (flags >> 2) & 3, regenN: f.length > 19 ? Math.max(1, Math.min(99, N(19) || 1)) : 1,
-            combo: 0, comboTimer: 0, pending: null, snapshot: null, savedAt: Date.now(), fromKey: true,
+            combo: f.length > 20 ? Math.max(0, N(20) || 0) : 0, comboTimer: (f.length > 20 && N(20) > 0) ? COMBO_TIME : 0, pending: null, snapshot: null, savedAt: Date.now(), fromKey: true,
             p: { x: 0, y: 0, hp, mhp, xp: N(9), nxp: Math.max(1, N(10)), lvl: Math.max(1, N(11)), acd: 0,
                  armorName: N(12) > 0 && arms[N(12) - 1] ? arms[N(12) - 1] : null, armorLevel: Math.max(1, N(13)),
                  stats, passiveLevels, passiveOrder, weps: wl },
@@ -4493,10 +4500,39 @@ var SaveKey = {
         // SETTINGS (added v3.7.0): 1 = sound, 2 = mouse aim, 4 = low performance mode, 8 = performance already chosen, 16 = lag question asked
         fields.push((d.vol ? 1 : 0) | (d.aim ? 2 : 0) | (d.lowPerf ? 4 : 0) | (d.perfSet ? 8 : 0) | (d.lagAsked ? 16 : 0));
         let payload = '';
-        fields.forEach(f => { const t = this.toB36(f); payload += this.DIGITS[t.length] + t; });
+        // each number = 1 length digit + the number. A number longer than 35 digits (e.g. Forge overclocks on the newest weapons -
+        // Chrono Hourglass / Soul Lantern) used to break the whole key -> '0' + a 2-digit length (v3.13.1, old keys never use '0')
+        fields.forEach(f => { const t = this.toB36(f); payload += t.length < this.DIGITS.length ? this.DIGITS[t.length] + t : '0' + t.length.toString(36).padStart(2, '0') + t; });
         const full = payload + this.checksum(payload);
         const sc = this.scramble(full, 1);
         return this.PREFIX + '-' + sc.match(/.{1,5}/g).join('-');
+    },
+    parseFields: function(payload) {
+        const out = [];
+        const walk = (i, f) => {
+            while(i < payload.length) {
+                if(payload.startsWith('undefined', i)) { // a number that was too long for one length digit (old bug)
+                    for(let L = 36; L <= 99 && out.length < 12; L++) if(i + 9 + L <= payload.length) walk(i + 9 + L, f.concat([this.fromB36(payload.slice(i + 9, i + 9 + L))]));
+                    return;
+                }
+                let len = this.DIGITS.indexOf(payload[i]), skip = 1;
+                if(len === 0) { len = parseInt(payload.slice(i + 1, i + 3), 36); skip = 3; } // a long number (v3.13.1)
+                if(!(len >= 1) || i + skip + len > payload.length) return; // dead end
+                f = f.concat([this.fromB36(payload.slice(i + skip, i + skip + len))]);
+                i += skip + len;
+            }
+            out.push(f);
+        };
+        walk(0, []);
+        return out;
+    },
+    // does this field list have the shape of a full v3.9+ key? (runs, daily run, then quests 5 + ascension 2 + barracks 7 + settings 1)
+    validShape: function(f) {
+        if(!f || Number(f[0]) !== 3 || f.length < 30) return false;
+        let i = 28; const nr = Number(f[i++]); if(!(nr >= 0 && nr <= 20)) return false;
+        for(let k = 0; k < nr; k++) { const L = Number(f[i]); if(!(L >= 19 && L <= 40) || !MAPS.some(m => m.id === Number(f[i + 1]))) return false; i += 1 + L; }
+        const df = Number(f[i++]); if(df === 1) { const L = Number(f[i]); if(!(L >= 21 && L <= 42)) return false; i += 1 + L; } else if(df !== 0) return false;
+        return f.length - i === 15;
     },
     // returns {ok, data} or {ok:false, old:true/false}
     decode: function(key) {
@@ -4507,15 +4543,11 @@ var SaveKey = {
             const full = this.scramble(body, -1);
             const payload = full.slice(0, -4);
             if(full.length < 6 || this.checksum(payload) !== full.slice(-4)) return { ok: false };
-            const f = [];
-            let i = 0;
-            while(i < payload.length) {
-                const len = this.DIGITS.indexOf(payload[i]);
-                if(len < 1) throw new Error('bad length');
-                f.push(this.fromB36(payload.slice(i + 1, i + 1 + len)));
-                i += 1 + len;
-            }
-            if(f.length < 19 || Number(f[0]) !== 3) return { ok: false };
+            // keys made by v3.9.0 - v3.13.0 with a Forge overclock on Chrono Hourglass / Soul Lantern have the word 'undefined' where
+            // one length digit should be -> try every length for that number and keep the one where the whole key lines up
+            const cands = this.parseFields(payload);
+            const f = cands.length === 1 ? cands[0] : cands.find(c => this.validShape(c));
+            if(!f || f.length < 19 || Number(f[0]) !== 3) return { ok: false };
             const heroes = this.heroIds(), weps = this.wepIds(), arms = this.armorIds(), forged = this.forgedIds();
             const clampN = (v, lo, hi) => Math.max(lo, Math.min(hi, Number(v)));
             const flags = (n, count) => this.unpack(n, 2, count);
@@ -4547,7 +4579,7 @@ var SaveKey = {
             data.selMap = clampN(f[18], 1, 12);
             data.hwWins = f.length > 19 ? clampN(f[19], 0, 9999) : 0;
             data.admin = f.length > 20 && Number(f[20]) === 1;
-            if(data.admin && !isLocalFile()) return { ok: false }; // admin saves never load on a website
+            if(data.admin && !isLocalFile()) return { ok: false, test: true }; // admin saves never load on a website
             data.duosUnlocked = f.length > 25 ? clampN(f[25], 1, 3) : 1;
             data.dailyDay = f.length > 26 ? clampN(f[26], 0, 1e7) : 0;
             data.dailyStreak = f.length > 27 ? clampN(f[27], 0, 99999) : 0;
@@ -4873,6 +4905,14 @@ var SaveSystem = {
         }
     },
     buildKey: function() { return SaveKey.encode(this.d); },
+    // the game was saved from another tab while this one is in a battle
+    twoTabs: function() {
+        if(this._twoTabsWarned || typeof PERF === 'undefined') return;
+        this._twoTabsWarned = true;
+        const wasOn = GAME.on && !GAME.paused; if(wasOn) GAME.paused = true;
+        PERF.popup('GAME OPEN IN 2 TABS', 'Pixel Survivor is also open in <b>another tab</b>. Play in <b>ONE tab only</b> - two tabs can save over each other and you could lose progress. Close the other tab when this battle is done.',
+            [['OK', 'btn-green', () => { if(wasOn && document.getElementById('overlay-pause').classList.contains('hidden') && !GAME.pendingChoice) { GAME.paused = false; GAME.lastTime = 0; } }]]);
+    },
     downloadFile: function() {
         try {
             const key = this.buildKey();
@@ -4940,7 +4980,7 @@ var SaveSystem = {
         const res = SaveKey.decode(v);
         if(!res.ok) {
             AU.ui();
-            ui.toast(res.old ? "OLD SAVE KEY - NOT SUPPORTED ANYMORE" : "INVALID SAVE KEY", 'error');
+            ui.toast(res.old ? "OLD SAVE KEY - NOT SUPPORTED ANYMORE" : (res.test ? "THIS KEY IS FROM A TEST SAVE - it only loads in the game file on the computer it was made on" : "INVALID SAVE KEY"), 'error');
             return;
         }
         const keepSeen = this.d.lastSeenUpdate || "";
@@ -5650,6 +5690,49 @@ var EMERGE_STYLES = {
     }
 };
 
+/* --- ARMOR ON THE HERO (v3.12.0) ---
+   Built from the hero's own pixels so it fits every hero: L1 chest plate, L2 + shoulder pads, L3 + belt with a buckle,
+   L4 + chest emblem, L5 + gold trim and bigger pads, L6 DEMON = dark red with bone spikes. Colours come from the armor's icon. */
+var ARMOR_LOOK = {};
+function armorOverlay(heroKey, armorName, lvl) {
+    lvl = Math.max(1, Math.min(6, lvl | 0));
+    const key = heroKey + '|' + armorName + '|' + lvl; if(ARMOR_LOOK[key] !== undefined) return ARMOR_LOOK[key];
+    const grid = SPRITE_GRIDS[heroKey], a = ARMORS[armorName];
+    if(!grid || !a) return ARMOR_LOOK[key] = null;
+    const H = grid.length, W = grid[0].length, op = (x, y) => y >= 0 && y < H && x >= 0 && x < W && !!PAL[grid[y][x]];
+    // armor colours = the main colour of its icon
+    let base = '#8a8f9e'; const ag = SPRITE_GRIDS[a.sprite];
+    if(ag) { const cnt = {}; ag.forEach(r => { for(const ch of r) if(PAL[ch] && ch !== 'k' && ch !== 'd' && ch !== 'w') cnt[ch] = (cnt[ch] || 0) + 1; }); const top = Object.keys(cnt).sort((x, y) => cnt[y] - cnt[x])[0]; if(top) base = PAL[top]; }
+    const demon = lvl >= 6;
+    const C = demon ? { A: '#ff6b6b', B: '#8f0e19', C: '#2a0408', E: '#ff2a6d', T: '#ffd13b' } : { A: emergeShade(base, 0.38), B: base, C: emergeShade(base, -0.5), E: RARITY_COLORS[a.rarity] || '#05d9e8', T: '#ffd13b' };
+    // where the chest is on this hero (rows between the head and the legs), plate centred on the sprite
+    let top = H, bot = -1; for(let y = 0; y < H; y++) for(let x = 0; x < W; x++) if(op(x, y)) { top = Math.min(top, y); bot = Math.max(bot, y); }
+    if(bot < 0) return ARMOR_LOOK[key] = null;
+    const hh = bot - top + 1, yT = top + Math.round(hh * 0.58), cx = Math.floor((W - 1) / 2);
+    const px = {}; const put = (x, y, c) => { if(x >= 0 && y >= 0 && x < W && y < H) px[x + ',' + y] = c; };
+    const on = (x, y) => op(x, y) && grid[y][x] !== 'k';
+    const half = lvl >= 4 ? 4 : 3, x0 = cx - half + 1, x1 = cx + half; // L1-3: 6 wide, L4+: 8 wide
+    for(let y = yT; y < yT + 3; y++) for(let x = x0; x <= x1; x++) {
+        if(!on(x, y)) continue;
+        put(x, y, y === yT ? (lvl >= 5 ? C.T : C.A) : ((y === yT + 2 || x === x0 || x === x1) ? C.C : C.B));
+    }
+    if(lvl >= 2) { put(cx, yT + 1, C.C); put(cx + 1, yT + 1, C.C); } // the plate splits in two halves
+    if(lvl >= 2) { // shoulder pads on the shoulders (bigger at L5)
+        const pads = lvl >= 5 ? [x0 - 3, x0 - 2, x0 - 1] : [x0 - 2, x0 - 1];
+        pads.forEach((x, i) => { const xr = x1 + (x0 - x); [yT - 1, yT].forEach((y, j) => { if(lvl >= 5 && i === 0 && j) return; const c = j ? C.B : C.A; if(on(x, y) || lvl >= 5) put(x, y, c); if(on(xr, y) || lvl >= 5) put(xr, y, c); }); }); // (L5: rounded outer edge)
+        if(demon) { put(x0 - 2, yT - 2, '#f4eedc'); put(x1 + 2, yT - 2, '#f4eedc'); put(x0 - 3, yT - 3, '#f4eedc'); put(x1 + 3, yT - 3, '#f4eedc'); } // bone spikes
+    }
+    if(lvl >= 3) { const yb = yT + 3; for(let x = x0; x <= x1; x++) if(on(x, yb)) put(x, yb, (x === cx || x === cx + 1) ? C.T : C.C); } // belt + buckle
+    if(lvl >= 4) { put(cx, yT + 1, C.E); put(cx + 1, yT + 1, C.E); } // emblem
+    // draw it the same way renderGrid draws the hero (32x32, pixels scaled + centred), with a dark outline around new pixels
+    const cv = document.createElement('canvas'); cv.width = 32; cv.height = 32; const g = cv.getContext('2d');
+    const sc = Math.max(1, Math.floor(32 / Math.max(W, H))), ox = Math.floor((32 - W * sc) / 2), oy = Math.floor((32 - H * sc) / 2);
+    g.fillStyle = '#0a0a14';
+    Object.keys(px).forEach(k => { const [x, y] = k.split(',').map(Number); [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dx, dy]) => { const nx = x + dx, ny = y + dy; if(!px[nx + ',' + ny] && !op(nx, ny)) g.fillRect(ox + nx * sc, oy + ny * sc, sc, sc); }); });
+    Object.keys(px).forEach(k => { const [x, y] = k.split(',').map(Number); g.fillStyle = px[k]; g.fillRect(ox + x * sc, oy + y * sc, sc, sc); });
+    return ARMOR_LOOK[key] = cv;
+}
+
 class Ent {
     constructor(x,y,s) { this.sk = ASSETS[s] ? s : 'e_slime'; this.x=x;this.y=y;this.s=ASSETS[s]||ASSETS.e_slime;this.d=false;this.w=32;this.h=32;this.a=0;this.fl=false;this.bob=0;this.flashT=0; }
     draw(ctx,cx,cy) {
@@ -5672,6 +5755,7 @@ class Ent {
         const wf = WALK[this.sk];
         const img = (wf && this.bob !== 0) ? wf[Math.floor(this.bob / 1.6) % 2] : this.s;
         ctx.drawImage(img,-this.w/2,-this.h/2,this.w,this.h);
+        if(this.armorName && this.armorLevel > 0) { const av = armorOverlay(this.sk, this.armorName, this.armorLevel); if(av) ctx.drawImage(av, -this.w/2, -this.h/2, this.w, this.h); } // the armor you wear (v3.12.0)
         // icy tint while chilled (slowed)
         if(this.chillT > 0 && ICE[this.sk]) {
             ctx.globalAlpha = 0.45;
@@ -6973,6 +7057,7 @@ class Wep {
                     p.puddleRadius = 55 * areaMult;
                     p.puddleLife = 240 + (this.stats.durB || 0) * 60; // 4 seconds puddle duration (+ Dur upgrades)
                     if(this.n === 'Venom Flask') { p.pcol = this.demon ? ['#ff4757', '#ff8a9a'] : ['#3a8a1a', '#7bff3a']; p.venom = true; } // poison puddle: slows enemies
+                    else if(this.demon) { p.pcol = ['#5a0612', '#c8102e']; p.unholy = true; } // v3.13.0 DEMON Holy Water = UNHOLY water: blood red, rune ring, flames
                 }
                 else if(this.stats.type==='strike') { p.isBolt = true; p.boltSeed = Math.floor(Math.random() * 100000); p.boltCol = this.demon ? '#ff6b6b' : (this.n === 'Thunder Claws' ? '#4deeea' : '#ffe14a');  
                     const target = pick(i); // each strike hits a different enemy
@@ -7580,13 +7665,15 @@ var GAME = {
                             p.life = p.puddleLife || 240;
                             p.vx = 0;
                             p.vy = 0;
-                            GAME.spawnParticles(p.x, p.y, '#05d9e8', 12);
-                            GAME.spawnParticles(p.x, p.y, '#ffffff', 8);
+                            GAME.spawnParticles(p.x, p.y, p.unholy ? '#ff2a6d' : '#05d9e8', 12);
+                            GAME.spawnParticles(p.x, p.y, p.unholy ? '#ffd13b' : '#ffffff', 8);
+                            if(p.unholy) GAME.spawnShockwave(p.x, p.y, '#ff2a6d', (p.puddleRadius || 55) * 1.1, 12, 3);
                             AU.play(500, 'sine', 0.1, 0.3);
                         }
                     } else {
                         // Ground puddle active! Damage enemies inside radius every 12 frames
                         const pRadius = p.puddleRadius || 55;
+                        if(p.unholy && GAME.frame % 5 === 0 && !PERF.low) { const a = Math.random() * 6.283, rr = pRadius * (0.3 + Math.random() * 0.7); GAME.particles.push({ x: p.x + Math.cos(a) * rr, y: p.y + Math.sin(a) * rr * 0.5, vx: 0, vy: -0.8 - Math.random(), g: 0, life: 22, c: Math.random() < 0.5 ? '#ff2a6d' : '#ffa200', sz: 2 }); } // embers
                         if(GAME.frame % 12 === 0) {
                             GAME.dmgZone(p.x, p.y, pRadius, p.dmg);
                             if(p.venom) GAME.es.forEach(e => { if(!e.boss && Math.hypot(e.x - p.x, e.y - p.y) < pRadius) e.chillT = Math.max(e.chillT || 0, 30); });
@@ -7867,16 +7954,22 @@ var GAME = {
             ctx.arc(px, py, rad * 0.75 * pulse, 0, Math.PI * 2);
             ctx.fill();
             // Liquid surface highlights
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = p.unholy ? '#ff8a9a' : '#ffffff';
             ctx.beginPath();
             ctx.arc(px - rad * 0.25, py - rad * 0.25, rad * 0.2, 0, Math.PI * 2);
             ctx.fill();
             // Puddle border ripple
-            ctx.strokeStyle = '#ffffff';
+            ctx.strokeStyle = p.unholy ? '#ff2a6d' : '#ffffff';
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.arc(px, py, rad * pulse, 0, Math.PI * 2);
             ctx.stroke();
+            if(p.unholy) { // UNHOLY (DEMON): a spinning rune ring + flames flickering around the rim
+                ctx.globalAlpha = 0.9; ctx.strokeStyle = '#ffd13b'; ctx.lineWidth = 2; ctx.setLineDash([6, 5]); ctx.lineDashOffset = -GAME.frame * 0.6;
+                ctx.beginPath(); ctx.arc(px, py, rad * 0.55, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
+                for(let i = 0; i < 10; i++) { const a = i * 0.628 + GAME.frame * 0.02, fx = px + Math.cos(a) * rad * pulse, fy = py + Math.sin(a) * rad * pulse, fh = 5 + ((GAME.frame * 0.4 + i * 3) % 6);
+                    ctx.fillStyle = '#ff4400'; ctx.fillRect(Math.round(fx) - 2, Math.round(fy - fh), 4, Math.round(fh)); ctx.fillStyle = '#ffd13b'; ctx.fillRect(Math.round(fx) - 1, Math.round(fy - fh * 0.6), 2, Math.round(fh * 0.6)); }
+            }
             ctx.restore();
         });
 
@@ -9647,7 +9740,7 @@ var GAME = {
     },
     // several Recruit crates at once: pay, roll + grant them all first, then one big reveal
     buyHeroes: function(n) {
-        n = Math.max(1, Math.min(10, Math.floor(n) || 1));
+        n = Math.max(1, Math.min(ui.CRATE_MAX || 100, Math.floor(n) || 1));
         if(n === 1) return GAME.buyHero();
         if(document.getElementById('crate-overlay').classList.contains('active')) return; // already opening
         const cost = 500 * n;
@@ -10136,13 +10229,18 @@ var ui = {
     },
     // HERO RECRUIT CRATE CINEMATIC (only used for Hero Recruit crates: shop + season pass crates)
     // result = { hero, isNew, refund, crateName }
-    // RECRUIT CRATE amount picker (x1 / x3 / x5 / x10)
-    crateN: 1,
-    setCrateN: function(n) {
-        this.crateN = n; AU.ui();
-        document.querySelectorAll('#crate-qty .cq').forEach(b => b.classList.toggle('on', b.textContent === 'x' + n));
-        const c = document.getElementById('crate-cost'); if(c) c.innerText = 'COST: ' + (500 * n).toLocaleString() + ' GOLD';
-        const b = document.getElementById('btn-buy-hero'); if(b) b.innerText = n > 1 ? 'BUY ' + n + ' CRATES' : 'BUY CRATE';
+    // RECRUIT CRATE amount picker (v3.12.0): type any amount 1-100, - / + buttons, MAX = as many as your gold buys
+    crateN: 1, CRATE_MAX: 100,
+    maxCrates: function() { return Math.max(1, Math.min(this.CRATE_MAX, Math.floor((SaveSystem.d.gold || 0) / 500))); },
+    stepCrateN: function(d) { AU.ui(); this.setCrateN((this.crateN || 1) + d); },
+    setCrateN: function(v, typing) {
+        const inp = document.getElementById('crate-n');
+        if(typing && (v === '' || v === null)) return; // still typing
+        const n = Math.max(1, Math.min(this.CRATE_MAX, Math.floor(Number(v)) || 1));
+        this.crateN = n;
+        if(inp && (!typing || String(n) !== String(v))) inp.value = n;
+        const c = document.getElementById('crate-cost'); if(c) { c.innerText = 'COST: ' + (500 * n).toLocaleString() + ' GOLD'; c.style.color = (SaveSystem.d.gold || 0) >= 500 * n ? 'gold' : '#ff6b81'; }
+        const b = document.getElementById('btn-buy-hero'); if(b) b.innerText = n > 1 ? 'OPEN ' + n + ' CRATES' : 'OPEN 1 CRATE';
     },
     // several Recruit crates: they drop in, WIND UP (shake faster, their rarity colour leaks out), all pop at once into hero cards
     playHeroCrateMulti: function(results, cb) {
@@ -10155,10 +10253,12 @@ var ui = {
         const bestR = best.hero.r || 'common', bc = RARITY_COLORS[bestR] || '#ffffff', big = bestR === 'epic' || bestR === 'legend';
         stage.style.display = 'none'; text.style.display = 'none';
         const box = document.createElement('div'); box.id = 'crate-multi';
-        const crateSrc = (ASSETS.crate_hero || ASSETS.chest).src;
+        const crateSrc = (ASSETS.crate_hero || ASSETS.chest).src, many = results.length > 10;
+        // on screen: at most 10 crates (the rarest ones, so an epic / legendary glow still shows)
+        const shownR = many ? results.slice().sort((a, b) => rank(b) - rank(a)).slice(0, 10) : results;
         box.innerHTML = `<div class="cm-title" id="cm-title">OPENING ${results.length} RECRUIT CRATES...</div>
-            <div class="cm-wrap"><img class="cm-sun" id="cm-sun" src="${ui.makeSunburst(bc)}">
-            <div class="cm-grid" style="grid-template-columns: repeat(${Math.min(5, results.length)}, 100px);">${results.map(r => `<div class="cm-slot" style="--rc:${RARITY_COLORS[r.hero.r] || '#fff'}"><img class="cm-crate" src="${crateSrc}"></div>`).join('')}</div></div>
+            <div class="cm-wrap"><img class="cm-sun" id="cm-sun" src="${ui.makeSunburst(bc)}">${many ? '<div class="cm-count">x' + results.length + '</div>' : ''}
+            <div class="cm-grid" style="grid-template-columns: repeat(${Math.min(5, shownR.length)}, 100px);">${shownR.map(r => `<div class="cm-slot" style="--rc:${RARITY_COLORS[r.hero.r] || '#fff'}"><img class="cm-crate" src="${crateSrc}"></div>`).join('')}</div></div>
             <div class="cm-sum" id="cm-sum">TAP TO SKIP</div>
             <button class="btn btn-green cm-ok" id="cm-ok" style="visibility:hidden">OK</button>`;
         ov.appendChild(box);
@@ -10170,7 +10270,7 @@ var ui = {
         // drop in one after another...
         crates.forEach((c, i) => { c.style.visibility = 'hidden'; at(i * 70, () => { c.style.visibility = ''; c.className = 'cm-crate chest-drop'; AU.play(150 + i * 15, 'square', 0.06, 0.25); }); });
         // ...WIND UP: slow shake, then their rarity colours leak out, then a hard rattle...
-        const W = results.length * 70 + 300;
+        const W = slots.length * 70 + 300;
         at(W, () => crates.forEach(c => { c.className = 'cm-crate cm-w1'; }));
         at(W + 500, () => {
             slots.forEach(sl => sl.classList.add('leak')); crates.forEach(c => { c.className = 'cm-crate cm-w2'; });
@@ -10202,10 +10302,17 @@ var ui = {
             AU.kill(); AU.play(800, 'sawtooth', 0.2, 0.5); AU.play(1200, 'sine', 0.35, 0.6);
             if(bestR === 'legend') setTimeout(() => { AU.play(1600, 'sine', 0.4, 0.5); AU.play(2000, 'sine', 0.5, 0.4); }, 150);
             const sun = document.getElementById('cm-sun'); if(sun) sun.classList.add('on');
-            slots.forEach((sl, i) => {
-                const r = results[i], h = r.hero, rc = RARITY_COLORS[h.r] || '#fff';
-                sl.className = 'cm-slot cm-card' + (r.isNew ? ' new' : '');
-                sl.innerHTML = `<div class="cm-rar" style="color:${rc}">${RARITY_NAMES[h.r] || ''}</div><img class="cm-hero" src="${ASSETS['h_' + h.id] ? ASSETS['h_' + h.id].src : ''}"><div class="cm-name">${h.n.toUpperCase()}</div>${r.isNew ? '<div class="cm-new">NEW!</div>' : '<div class="cm-dup">DUPE +' + r.refund + 'G</div>'}`;
+            const cards = many ? (() => { // lots of crates: one card per hero you got (x count, NEW, refund gold)
+                    const g = {}; results.forEach(r => { const e = g[r.hero.id] || (g[r.hero.id] = { hero: r.hero, n: 0, isNew: false, refund: 0 }); e.n++; if(r.isNew) e.isNew = true; e.refund += r.refund || 0; });
+                    return Object.values(g).sort((a, b) => (RARITY_ORDER.indexOf(b.hero.r) - RARITY_ORDER.indexOf(a.hero.r)) || (b.n - a.n));
+                })() : results.map(r => ({ hero: r.hero, n: 1, isNew: r.isNew, refund: r.refund || 0 }));
+            const grid = box.querySelector('.cm-grid'); grid.innerHTML = ''; grid.style.gridTemplateColumns = 'repeat(' + Math.min(5, cards.length) + ', 100px)';
+            const cnt = box.querySelector('.cm-count'); if(cnt) cnt.remove();
+            cards.forEach((c, i) => {
+                const h = c.hero, rc = RARITY_COLORS[h.r] || '#fff', sl = document.createElement('div');
+                sl.className = 'cm-slot cm-card' + (c.isNew ? ' new' : ''); sl.style.setProperty('--rc', rc);
+                sl.innerHTML = `<div class="cm-rar" style="color:${rc}">${RARITY_NAMES[h.r] || ''}</div><img class="cm-hero" src="${ASSETS['h_' + h.id] ? ASSETS['h_' + h.id].src : ''}"><div class="cm-name">${h.n.toUpperCase()}</div>${c.isNew ? '<div class="cm-new">NEW!</div>' : ''}${c.refund ? '<div class="cm-dup">DUPE +' + c.refund.toLocaleString() + 'G</div>' : ''}${c.n > 1 ? '<div class="cm-x">x' + c.n + '</div>' : ''}`;
+                grid.appendChild(sl);
                 if(sl.animate) sl.animate([{ transform: 'scale(0.2)', opacity: 0 }, { transform: 'scale(1.12)', opacity: 1, offset: 0.6 }, { transform: 'none', opacity: 1 }], { duration: 380, delay: i * 60, easing: 'ease-out', fill: 'backwards' });
             });
             const nNew = results.filter(r => r.isNew).length, dups = results.length - nNew, gold = results.reduce((t, r) => t + (r.refund || 0), 0);
@@ -10704,6 +10811,7 @@ function armorHowToUnlock(name) {
     const a = ARMORS[name];
     if(a.event) return a.event.how;
     const m = MAPS.find(mm => mm.id === a.arenaId);
+    if(a.arenaId === CAMPAIGN_ORDER[0]) return `Beat Arena 1${m ? ' (' + m.n + ')' : ''} to unlock your first armor.`;
     return `Reach Arena ${arenaNum(a.arenaId)}${m ? ' (' + m.n + ')' : ''} to unlock.`;
 }
 function buildArmorPickRow() {
@@ -12321,61 +12429,152 @@ function convertGoldToScrap(goldCost, scrapAmt) {
    DUOS  - 2-player co-op in ONE shared world on 3 special (harder) arenas. The HOST runs the whole game
            (GAME.p2 = partner). The GUEST sends its keys and draws the host's snapshots with the normal
            renderer (enemies / shots / pickups are "puppets").
-   Lobby codes use PeerJS (free public broker, loaded from a CDN only when you create or join a lobby).
+   Lobby codes use PeerJS (free public broker, loaded from a CDN only when you create or join a lobby) + an MQTT relay
+   when two devices can't link up directly (v3.13.0).
    Add #localnet to the page address to use a BroadcastChannel instead (two tabs of one browser = testing). */
 var NET = {
     PREFIX: 'pxsurvarena-v3-',
+    // RELAY (v3.13.0): two devices often can't link up directly (home / school wifi blocks it - only two tabs on ONE
+    // device always worked). Then the game messages go through a free public MQTT broker instead: a little slower,
+    // but it works through any wifi. HiveMQ first (it delivered every message in tests), EMQX as a backup.
+    RELAY_URLS: ['wss://broker.hivemq.com:8884/mqtt', 'wss://broker.emqx.io:8084/mqtt'],
+    RELAY_TOPIC: 'pxsurvarena-v3/',
     peer: null, conn: null, bc: null, role: null, code: null, open: false,
+    mq: null, relayOn: false, relayId: '', relayPeer: '', relayHost: '', relayFound: false, _lastRelay: 0,
     isLocal: function() { return /localnet/.test(location.hash); },
-    load: function(cb) {
-        if(this.isLocal() || window.Peer) return cb(true);
-        const urls = ['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
+    loadLib: function(urls, has, cb) {
+        if(has()) return cb();
         const tryNext = (i) => {
-            if(i >= urls.length) return cb(false);
+            if(i >= urls.length) return cb();
             const sc = document.createElement('script'); sc.src = urls[i];
-            sc.onload = () => cb(!!window.Peer);
+            sc.onload = () => cb();
             sc.onerror = () => { sc.remove(); tryNext(i + 1); };
             document.head.appendChild(sc);
         };
         tryNext(0);
+    },
+    // PeerJS (direct link) + mqtt.js (relay), both from a CDN only when you create or join a lobby
+    load: function(cb) {
+        if(this.isLocal()) return cb(true);
+        let left = 2; const done = () => { if(--left === 0) cb(!!(window.Peer || window.mqtt)); };
+        this.loadLib(['https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'], () => window.Peer, done);
+        this.loadLib(['https://unpkg.com/mqtt@4.3.7/dist/mqtt.min.js', 'https://cdn.jsdelivr.net/npm/mqtt@4.3.7/dist/mqtt.min.js'], () => window.mqtt, done);
     },
     newCode: function() { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let c = ''; for(let i = 0; i < 5; i++) c += A[Math.floor(Math.random() * A.length)]; return c; },
     host: function(onReady, onFail) {
         this.close(); this.role = 'host';
         const code = this.newCode(); this.code = code;
         if(this.isLocal()) { this.bc = new BroadcastChannel('psa-mp-' + code); this.bc.onmessage = (ev) => this.onBc(ev.data); return onReady(code); }
-        let ready = false;
-        try { this.peer = new Peer(this.PREFIX + code.toLowerCase()); } catch(e) { return onFail('This browser cannot do online play.'); }
-        this.peer.on('open', () => { ready = true; onReady(code); });
-        this.peer.on('connection', (c) => {
-            if(this.conn && this.conn.open) { setTimeout(() => { try { c.close(); } catch(e) {} }, 500); return; } // lobby is full
-            this.attach(c);
-        });
-        this.peer.on('error', (e) => {
-            if(!ready) { if(e && e.type === 'unavailable-id') return this.host(onReady, onFail); onFail(this.errText(e)); }
-        });
-        this.peer.on('disconnected', () => { try { if(this.peer && !this.peer.destroyed) this.peer.reconnect(); } catch(e) {} });
+        let ready = false, downs = 0, why = '';
+        const up = () => { if(!ready && this.code === code) { ready = true; onReady(code); } };
+        const down = (msg) => { if(msg) why = msg; if(++downs >= 2 && !ready && this.code === code) onFail(why || 'Could not reach the online lobby server (school wifi may block it).'); };
+        if(window.Peer) { try { this.peer = new Peer(this.PREFIX + code.toLowerCase()); } catch(e) { this.peer = null; } }
+        if(this.peer) {
+            this.peer.on('open', up);
+            this.peer.on('connection', (c) => {
+                if((this.conn && this.conn.open) || this.relayOn) { setTimeout(() => { try { c.close(); } catch(e) {} }, 500); return; } // lobby is full
+                this.attach(c);
+            });
+            this.peer.on('error', (e) => {
+                if(!ready) { if(e && e.type === 'unavailable-id') return this.host(onReady, onFail); down(this.errText(e)); }
+            });
+            this.peer.on('disconnected', () => { try { if(this.peer && !this.peer.destroyed) this.peer.reconnect(); } catch(e) {} });
+        } else down();
+        this.relayStart('h', up, () => down());
     },
     join: function(code, onOpen, onFail) {
         this.close(); this.role = 'guest'; this.code = code;
         if(this.isLocal()) { this.bc = new BroadcastChannel('psa-mp-' + code); this.bc.onmessage = (ev) => this.onBc(ev.data); this.open = true; return onOpen(); }
-        let settled = false;
-        const fail = (msg) => { if(settled) return; settled = true; this.close(); onFail(msg); };
-        const timer = setTimeout(() => fail('No lobby with that code (or it is full).'), 12000);
-        try { this.peer = new Peer(); } catch(e) { clearTimeout(timer); return fail('This browser cannot do online play.'); }
-        this.peer.on('open', () => {
-            const c = this.peer.connect(this.PREFIX + code.toLowerCase(), { reliable: true, serialization: 'raw' });
-            this.attach(c);
-            c.on('open', () => { if(settled) return; settled = true; clearTimeout(timer); onOpen(); });
-        });
-        this.peer.on('error', (e) => { clearTimeout(timer); fail(e && e.type === 'peer-unavailable' ? 'No lobby with that code.' : this.errText(e)); });
+        let settled = false, peerMissing = false;
+        const finish = (how) => {
+            if(settled) return; settled = true; clearTimeout(timer); clearTimeout(this._relayWait);
+            if(how === 'p2p') this.relayEnd(); // the direct link works - no relay needed
+            else { // relay: tell the host, drop the half-open direct link
+                this.relayOn = true; this.relayPub({ k: 'use', id: this.relayId }, 1);
+                try { if(this.conn) this.conn.close(); } catch(e) {} this.conn = null;
+                try { if(this.peer) this.peer.destroy(); } catch(e) {} this.peer = null;
+            }
+            this.open = true; onOpen();
+        };
+        const fail = (msg) => { if(settled) return; settled = true; clearTimeout(timer); clearTimeout(this._relayWait); this.close(); onFail(msg); };
+        const timer = setTimeout(() => fail(this.relayFound ? 'Found the lobby but could not connect - try again.' : (peerMissing ? 'No lobby with that code.' : 'Could not reach that lobby - check the code, or your wifi may block online play.')), 15000);
+        // 1) direct link (fastest)
+        if(window.Peer) { try { this.peer = new Peer(); } catch(e) { this.peer = null; } }
+        if(this.peer) {
+            this.peer.on('open', () => {
+                if(settled || !this.peer) return;
+                const c = this.peer.connect(this.PREFIX + code.toLowerCase(), { reliable: true, serialization: 'raw' });
+                this.attach(c);
+                c.on('open', () => finish('p2p'));
+            });
+            this.peer.on('error', (e) => {
+                if(e && e.type === 'peer-unavailable') { peerMissing = true; setTimeout(() => { if(!this.relayFound) fail('No lobby with that code.'); }, 5000); }
+            });
+        }
+        // 2) relay: the host answers there -> if the direct link still isn't up a few seconds later, play over the relay
+        this.onRelayFound = () => { clearTimeout(this._relayWait); this._relayWait = setTimeout(() => finish('relay'), this.conn ? 4000 : 1500); };
+        this.onRelayFull = () => fail('That lobby is full.');
+        this.relayStart('g', () => { const hello = () => { if(settled || this.relayFound || !this.mq) return; this.relayPub({ k: 'hello', id: this.relayId }, 1); setTimeout(hello, 1500); }; hello(); }, () => {});
     },
     attach: function(c) {
         this.conn = c;
-        c.on('open', () => { this.open = true; });
+        c.on('open', () => { c._open = true; this.open = true; });
         c.on('data', (m) => { if(typeof m === 'string') { try { m = JSON.parse(m); } catch(e) { return; } } this.recv(m); });
-        c.on('close', () => { if(this.conn === c) { this.conn = null; this.open = false; MP.onLost(); } });
+        c.on('close', () => { if(this.conn === c) { this.conn = null; if(!c._open || this.relayOn) return; this.open = false; MP.onLost(); } });
         c.on('error', () => {});
+    },
+    /* ---- relay ---- */
+    relayStart: function(listen, onUp, onDown) {
+        if(!window.mqtt || !this.code) { if(onDown) onDown(); return; }
+        const code = this.code, id = Math.random().toString(36).slice(2, 10), base = this.RELAY_TOPIC + code.toLowerCase() + '/';
+        this.relayId = id; this.relayRx = base + listen; this.relayTx = base + (listen === 'h' ? 'g' : 'h');
+        const tryUrl = (i) => {
+            if(this.code !== code) return;
+            if(i >= this.RELAY_URLS.length) { if(onDown) onDown(); return; }
+            let done = false, c;
+            try { c = mqtt.connect(this.RELAY_URLS[i], { clientId: 'psa_' + id + '_' + i, clean: true, connectTimeout: 6000, reconnectPeriod: 3000, keepalive: 20,
+                will: { topic: this.relayTx, payload: JSON.stringify({ k: 'bye', id: id }), qos: 0, retain: false } }); } catch(e) { return tryUrl(i + 1); }
+            const next = () => { if(done) return; done = true; clearTimeout(to); try { c.end(true); } catch(e) {} tryUrl(i + 1); };
+            const to = setTimeout(next, 8000);
+            c.on('connect', () => { // (also after an automatic reconnect: subscribe again)
+                if(this.code !== code) { try { c.end(true); } catch(e) {} return; }
+                if(!done) { done = true; clearTimeout(to); this.mq = c; }
+                if(this.mq !== c) return;
+                c.subscribe(this.relayRx, { qos: 1 }, () => { if(onUp) { const f = onUp; onUp = null; f(); } });
+            });
+            c.on('message', (tp, p) => { if(this.mq !== c) return; let m; try { m = JSON.parse(p.toString()); } catch(e) { return; } this.onRelay(m); });
+            c.on('error', () => { if(this.mq !== c) next(); });
+        };
+        tryUrl(0);
+    },
+    relayPub: function(o, qos) { const c = this.mq; if(c && c.connected) { try { c.publish(this.relayTx, JSON.stringify(o), { qos: qos || 0 }); } catch(e) {} } },
+    onRelay: function(m) {
+        if(!m || !m.k || m.id === this.relayId || (m.to && m.to !== this.relayId)) return;
+        if(this.role === 'host') {
+            if(m.k === 'hello') { // someone typed our code
+                if(!this.relayPeer || this.relayPeer === m.id) { if(!(this.conn && this.conn.open)) this.relayPeer = m.id; this.relayPub({ k: 'welcome', id: this.relayId, to: m.id }, 1); }
+                else this.relayPub({ k: 'full', id: this.relayId, to: m.id }, 1);
+                return;
+            }
+            if(m.k === 'use') { this.relayPeer = m.id; this.relayOn = true; this.open = true; MP.toast('YOUR FRIEND CONNECTED THROUGH THE BACKUP RELAY (a little more delay)', 'info'); return; } // the guest plays over the relay
+        } else {
+            if(m.k === 'welcome') { this.relayHost = m.id; if(!this.relayFound) { this.relayFound = true; if(this.onRelayFound) this.onRelayFound(); } return; }
+            if(m.k === 'full') { if(this.onRelayFull) this.onRelayFull(); return; }
+        }
+        const partner = this.role === 'host' ? this.relayPeer : this.relayHost;
+        if(m.k === 'bye') {
+            if(m.id !== partner) return;
+            if(this.role === 'host') this.relayPeer = '';
+            if(this.relayOn) { this.relayOn = false; this.open = false; MP.onLost(); }
+            return;
+        }
+        if(m.k === 'm' && this.relayOn && m.id === partner) this.recv(m.m);
+    },
+    // the host turned a guest away (wrong version etc.) -> free the relay seat
+    relayDrop: function() { if(this.role === 'host') { this.relayOn = false; this.relayPeer = ''; } },
+    relayEnd: function() {
+        if(this.mq) { const c = this.mq; this.relayPub({ k: 'bye', id: this.relayId }, 0); setTimeout(() => { try { c.end(true); } catch(e) {} }, 300); }
+        this.mq = null; this.relayOn = false; this.relayPeer = ''; this.relayHost = ''; this.relayFound = false; this.onRelayFound = null; this.onRelayFull = null;
     },
     errText: function(e) {
         const t = e && e.type;
@@ -12392,15 +12591,22 @@ var NET = {
     send: function(t, d) {
         const m = { t: t, d: d };
         if(this.bc) { m.from = this.role; try { this.bc.postMessage(m); } catch(e) {} return; }
-        if(this.conn && this.conn.open) { try { this.conn.send(this.conn.serialization === 'raw' ? JSON.stringify(m) : m); } catch(e) {} }
+        if(this.conn && this.conn.open) { try { this.conn.send(this.conn.serialization === 'raw' ? JSON.stringify(m) : m); } catch(e) {} return; }
+        if(this.relayOn) { this._lastRelay = performance.now(); this.relayPub({ k: 'm', id: this.relayId, m: m }, t === 'snap' ? 0 : 1); }
     },
     // false when the connection still has a lot waiting to go out (slow wifi) -> skip a snapshot instead of piling up lag
-    canSend: function() { const c = this.conn, dc = c && c.dataChannel; return !(dc && dc.bufferedAmount > 96 * 1024) && !(c && c.bufferSize > 0); },
+    canSend: function() {
+        const c = this.conn, dc = c && c.dataChannel;
+        if(!(c && c.open) && this.relayOn) return performance.now() - (this._lastRelay || 0) > 85; // relay: about 11 snapshots a second
+        return !(dc && dc.bufferedAmount > 96 * 1024) && !(c && c.bufferSize > 0);
+    },
     recv: function(m) { if(m && m.t) { try { MP.onMsg(m.t, m.d || {}); } catch(e) { console.error('multiplayer message ' + m.t, e); } } },
     close: function() {
         try { if(this.conn) this.conn.close(); } catch(e) {}
         try { if(this.peer) this.peer.destroy(); } catch(e) {}
         try { if(this.bc) { if(this.role) this.bc.postMessage({ from: this.role, t: 'bye' }); this.bc.close(); } } catch(e) {}
+        this.relayEnd();
+        clearTimeout(this._relayWait);
         this.peer = null; this.conn = null; this.bc = null; this.open = false; this.role = null; this.code = null;
     }
 };
@@ -12532,6 +12738,7 @@ var MP = {
             if(!ok) { this.busy = false; this.err = 'Could not load online play (no internet, or the school blocks it).'; return this.render(); }
             NET.join(code, () => {
                 this.role = 'guest';
+                if(NET.relayOn) this.toast('CONNECTED THROUGH THE BACKUP RELAY - your wifi blocks a direct link (a little more delay)', 'info');
                 this.send('hello', this.myProfile());
                 this.joinWait = setTimeout(() => { if(!this.party) { this.busy = false; this.err = 'No answer from that lobby.'; NET.close(); this.render(); } }, 8000);
             }, msg => { this.busy = false; this.err = msg; this.render(); });
@@ -12564,7 +12771,7 @@ var MP = {
                 if(d.ver !== this.ver()) why = 'Your game version is different from the host\'s. Both players need the newest version (refresh the page).';
                 else if(GAME.mp || GAME.on) why = 'The host is in a round right now. Try again in a moment.';
                 else if(!this.canPlay(d, this.mode, this.curVal())) why = this.mode === 'duels' ? `You haven't unlocked ${this.arenaName('duels', this.duelMap)} yet, so you can't join this duel.` : `You haven't unlocked the Duos arena ${this.arenaName('duos', this.duoArena)} yet.`;
-                if(why) { this.send('reject', { why: why }); setTimeout(() => { if(!this.partner) { if(NET.conn) { try { NET.conn.close(); } catch(e) {} NET.conn = null; NET.open = false; } } }, 600); return; }
+                if(why) { this.send('reject', { why: why }); setTimeout(() => { if(!this.partner) { if(NET.conn) { try { NET.conn.close(); } catch(e) {} NET.conn = null; NET.open = false; } NET.relayDrop(); } }, 600); return; }
                 this.partner = d; this.partnerInMenu = true;
                 this.send('welcome', { mode: this.mode, duelMap: this.duelMap, duoArena: this.duoArena, prof: this.myProfile() });
                 this.toast('A FRIEND JOINED YOUR LOBBY!', 'success'); AU.coin();
@@ -13493,7 +13700,9 @@ var ASCEND = {
         let flashed = false, done = false;
         const frame = (now) => {
             if(done) return;
-            const t = (now - t0) / 1000, W = cv.width, H = cv.height, cx = W / 2;
+            requestAnimationFrame(frame); // ask for the next frame FIRST so one bad frame can't stop the animation (v3.11.1)
+            const t = Math.max(0, (now - t0) / 1000), W = cv.width, H = cv.height, cx = W / 2;
+            try {
             g.globalAlpha = 1; g.fillStyle = '#05040c'; g.fillRect(0, 0, W, H);
             // starfield
             for(let i = 0; i < 70; i++) { const x = (i * 97.3) % W, y = (i * 53.7 + t * (8 + i % 5) * 6) % H; g.globalAlpha = 0.3 + 0.7 * Math.abs(Math.sin(t * 2 + i)); g.fillStyle = i % 4 ? '#ffffff' : '#ffd13b'; g.fillRect(Math.floor(x), Math.floor(y), 1, 1); }
@@ -13504,7 +13713,7 @@ var ASCEND = {
             g.globalAlpha = 1; g.fillStyle = pg; g.fillRect(cx - pw, 0, pw * 2, H);
             // hero rising
             const rise = Math.min(1, Math.max(0, (t - 0.4) / 1.8)), hy = H * 0.72 - rise * H * 0.32, hs = 48 + rise * 16;
-            for(let k = 0; k < 3; k++) { const rr = ((t * 60 + k * 40) % 120); g.globalAlpha = Math.max(0, 1 - rr / 120) * 0.8; g.strokeStyle = k % 2 ? '#fff59d' : '#ffd700'; g.lineWidth = 2; g.beginPath(); g.ellipse(cx, hy + hs * 0.45, rr, rr * 0.3, 0, 0, Math.PI * 2); g.stroke(); }
+            for(let k = 0; k < 3; k++) { const rr = Math.max(0.5, (t * 60 + k * 40) % 120); g.globalAlpha = Math.max(0, 1 - rr / 120) * 0.8; g.strokeStyle = k % 2 ? '#fff59d' : '#ffd700'; g.lineWidth = 2; g.beginPath(); g.ellipse(cx, hy + hs * 0.45, rr, rr * 0.3, 0, 0, Math.PI * 2); g.stroke(); }
             if(Math.random() < 0.9) for(let k = 0; k < 3; k++) sparks.push({ x: cx + (Math.random() - 0.5) * 70, y: hy + (Math.random() - 0.2) * 40, vy: -0.6 - Math.random() * 1.6, l: 60, c: Math.random() < 0.5 ? '#ffd700' : '#ffffff' });
             for(const sp of sparks) { sp.y += sp.vy; sp.l--; g.globalAlpha = Math.max(0, sp.l / 60); g.fillStyle = sp.c; g.fillRect(Math.floor(sp.x), Math.floor(sp.y), 2, 2); }
             for(let i = sparks.length - 1; i >= 0; i--) if(sparks[i].l <= 0) sparks.splice(i, 1);
@@ -13516,7 +13725,7 @@ var ASCEND = {
             if(t > 2.2 && t < 3.0) { g.globalAlpha = 1 - (t - 2.2) / 0.8; g.fillStyle = '#fffbe6'; g.fillRect(0, 0, W, H); }
             if(t > 2.2 && !flashed) { flashed = true; txt.classList.add('show'); }
             g.globalAlpha = 1;
-            requestAnimationFrame(frame);
+            } catch(err) { g.globalAlpha = 1; }
         };
         requestAnimationFrame(frame);
         setTimeout(() => { if(!flashed) { flashed = true; txt.classList.add('show'); } }, 2600); // even if the tab is slow
@@ -14370,6 +14579,22 @@ function applyPassReward(reward) {
     }
 }
 
+// === TWO TABS (v3.11.1) ===
+// If the game is open in another tab, the old tab used to write its OLD copy back over newer progress (arena progress
+// after ascending came back as before, run gold / kills went back to old numbers). Now a tab that isn't in a battle
+// takes over the newer save right away; a tab that IS in a battle gets a warning to play in one tab only.
+window.addEventListener('storage', (e) => {
+    if(e.key !== SAVE_KEYS.main || !e.newValue || !SaveSystem.bootReady || SaveSystem.resetting) return;
+    let o = null; try { o = JSON.parse(e.newValue); } catch(err) { return; }
+    if(!o || o.signature !== SAVE_SIG || (o.savedAt || 0) <= (SaveSystem.d.savedAt || 0)) return;
+    if(GAME.on) { SaveSystem.twoTabs(); return; }
+    SaveSystem.d = o;
+    SaveSystem.applyDefaults();
+    SaveSystem._lastCore = JSON.stringify(SaveSystem.d, (k, v) => k === 'savedAt' ? undefined : v); // nothing new to write back
+    if(SaveSystem.d.selMap) GAME.selMap = SaveSystem.d.selMap;
+    try { SaveSystem.upd(); renderBattleScreen(); SaveSystem.refreshTitle(true); } catch(err) {}
+});
+
 // === AUTO-SAVE ON EXIT, CHROMEBOOK LID CLOSE & LIFECYCLE SUSPENSION ===
 (function () {
     const triggerAutoSave = () => {
@@ -14863,12 +15088,27 @@ function applyGearUpgrade(type, key, amount) {
    art: { map, hero, fx: 'beams'|'skulls'|'swarm'|'chest'|'stack'|'rift'|'pumpkins'|'slash'|'duo', boss, foes: [...], extra, banner, bannerCol, seed } */
 var UPDATE_LOGS = [
     {
+        date: "October 26, 2026",
+        version: "v3.13.1",
+        art: { map: 8, hero: 'h_knight', hero2: 'h_warlock', fx: 'duo', foes: ['e_ghost', 'e_imp', 'e_skel'], boss: 'e_void_gazer', banner: 'PLAY ONLINE ON 2 DEVICES', bannerCol: '#4deeea', seed: 37 },
+        notes: [
+            "MULTIPLAYER ON TWO DEVICES: Online play only worked with two tabs on one computer - on two different devices the lobby code was 'not found'. That's because most home and school wifi blocks a direct link between two devices. Now the game tries the direct link first, and if it can't connect it automatically switches to a BACKUP RELAY that works through any wifi (a tiny bit more delay). A message tells you when the backup relay is used. A code that really doesn't exist still says 'No lobby with that code'.",
+            "UNHOLY WATER: Holy Water at DEMON level used to look exactly like the normal one. Now it turns into UNHOLY WATER - a blood-red pool with a spinning gold rune circle, flames flickering around the edge and embers rising out of it.",
+            "BUG FIXES: SAVE KEYS said INVALID SAVE KEY once you overclocked Chrono Hourglass or Soul Lantern in the Forge (the two ascended weapons) - fixed, and the keys that broke this way load again, with everything in them. Duels and Duos on two different devices could not connect (the code said it wasn't valid). DEMON Holy Water looked the same as normal Holy Water."
+        ]
+    },
+    {
         date: "October 23, 2026",
-        version: "v3.11.0",
+        version: "v3.12.0",
         art: { map: 4, hero: 'h_knight', fx: 'rift', boss: 'e_void_gazer', foes: ['e_ghost', 'e_imp', 'e_ghost'], banner: 'EVERY BOSS ENTERS ITS OWN WAY', bannerCol: '#e056fd', seed: 36 },
         notes: [
             "UNIQUE BOSS ENTRANCES: Every mini boss and final boss now has its OWN entrance cutscene (only the Ogre Chieftain still punches its claws out of the ground). ROBOT KING: a red target locks on, it falls from the sky on rocket flames, crashes and boots up. SAND WORM: a sand bump races under the ground, a whirlpool, then it bursts out and leaps. MUMMY PHARAOH: a golden sarcophagus rises from the sand, the lid slides off and falls, bandages fly. OBSIDIAN GOLEM: rocks fly in from everywhere and stack up into the golem. MAGMA BRUTE: a lava geyser erupts and it rises out white-hot, then cools down.",
-            "MORE ENTRANCES: PHANTOM WRAITH: wisps spiral in and it flickers into being. VOID GAZER: reality TEARS open and it comes through the rift. WAR MECH X: a hologram blueprint, then it gets printed from the feet up. CHAOS GOD: a rainbow rune circle, 3 lightning strikes, it snaps together from split colors. YETI KING: a giant snowball rolls in, cracks and bursts. FROST TITAN: ice spikes and an ice block close around it, crack and shatter. BOG TROLL: rises slowly out of a bubbling bog, dripping slime. PLAGUE HYDRA: three serpent heads rise from the poison and hiss. STAR COLOSSUS: crashes down as a comet. ASTRAL SERAPH: descends from the sky on a pillar of light with its wings unfolding. PUMPKIN KING: vines curl out, a giant pumpkin grows, lights up and bursts. HEADLESS HORSEMAN: burning hoofprints, then it gallops in on a trail of fire and rears up."
+            "MORE ENTRANCES: PHANTOM WRAITH: wisps spiral in and it flickers into being. VOID GAZER: reality TEARS open and it comes through the rift. WAR MECH X: a hologram blueprint, then it gets printed from the feet up. CHAOS GOD: a rainbow rune circle, 3 lightning strikes, it snaps together from split colors. YETI KING: a giant snowball rolls in, cracks and bursts. FROST TITAN: ice spikes and an ice block close around it, crack and shatter. BOG TROLL: rises slowly out of a bubbling bog, dripping slime. PLAGUE HYDRA: three serpent heads rise from the poison and hiss. STAR COLOSSUS: crashes down as a comet. ASTRAL SERAPH: descends from the sky on a pillar of light with its wings unfolding. PUMPKIN KING: vines curl out, a giant pumpkin grows, lights up and bursts. HEADLESS HORSEMAN: burning hoofprints, then it gallops in on a trail of fire and rears up.",
+            "ARMOR YOU CAN SEE (NEW!): The armor you wear now shows on your hero in battle - a pixel chest plate in that armor's colors (wood, stone, iron, gold, frost...). It changes every time you level it up in a run: LV2 shoulder pads, LV3 a belt with a buckle, LV4 a bigger plate with an emblem, LV5 gold trim and big shoulder pads, DEMON a dark red plate with bone spikes.",
+            "NO ARMOR AT THE START: New players start without armor - beat Arena 1 to get your first one, then you can see it on your hero.",
+            "OPEN ANY AMOUNT OF RECRUIT CRATES: The Recruit Crate now has a box where you type how many to open (up to 100), - and + buttons, and MAX (as many as your gold can buy). Press OPEN. Big openings show one card per hero you got (x9, NEW!, refund gold).",
+            "SAVE KEYS: Your COMBO from a run in progress now comes back too when you load a save key.",
+            "BUG FIXES: The ASCENSION animation froze on its first picture (no movement, your hero never rose up). If the game was open in TWO TABS, the older tab could save over your newer progress - so your arena progress after ascending and the gold / kills of a run in progress could go back to old numbers. Now a tab you are not playing in takes over the newest save, and a tab that is in a battle warns you to play in one tab only."
         ]
     },
     {
@@ -15583,7 +15823,7 @@ function defaultArmorName() {
     for(let k = Math.min(CAMPAIGN_ORDER.length, campaignEver()) - 1; k >= 0; k--) {
         const mapObj = MAPS.find(m => m.id === CAMPAIGN_ORDER[k]);
         const armUnlock = mapObj ? mapObj.u.find(u => u.type === 'armor') : null;
-        if(armUnlock) return armUnlock.n;
+        if(armUnlock && isArmorUnlocked(armUnlock.n)) return armUnlock.n; // (new players have no armor until they beat Arena 1)
     }
     return null;
 }
