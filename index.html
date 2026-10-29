@@ -7835,9 +7835,10 @@ var GAME = {
             let spawnRate = Math.max(5, 60 - Math.floor(GAME.time/5));
             const swarmMod = DAILY.has('swarm'); // daily: SWARM
             if(swarmMod) spawnRate = Math.max(4, Math.round(spawnRate * 0.8));
+            if(GAME.tod && TODB.spawnTune) spawnRate = TODB.spawnTune(spawnRate); // TRICK OR DEATH last stand: fewer monsters
             
             // cap on live enemies so big crowds never lag a Chromebook (bosses / minions / swarms still spawn)
-            if(GAME.time<600 && GAME.frame%spawnRate===0 && GAME.es.length < MAX_ENEMIES && !(GAME.tod && GAME.tod.noSpawn)) {
+            if(GAME.time<600 && GAME.frame%spawnRate===0 && GAME.es.length < MAX_ENEMIES && !(GAME.tod && (GAME.tod.noSpawn || (TODB.noMore && TODB.noMore())))) {
                 const et = GAME.pickEnemyType();
                 // WIDER SPAWN RADIUS to account for widescreen aspect ratios
                 const maxDim = Math.max(C.W, C.H);
@@ -7849,7 +7850,7 @@ var GAME = {
                     GAME.es.push(new Enemy(et, GAME.p.x+Math.cos(a)*r + (Math.random()-0.5)*110, GAME.p.y+Math.sin(a)*r + (Math.random()-0.5)*110, GAME.map.diff));
             }
             // SWARM WAVES every 90s (not at the 5:00 mini boss): a ring of enemies closes in
-            if(GAME.time > 0 && GAME.time < 600 && GAME.time % (swarmMod ? 45 : 90) === 0 && GAME.lastWaveT !== GAME.time && !(GAME.tod && GAME.tod.noSpawn)) {
+            if(GAME.time > 0 && GAME.time < 600 && GAME.time % (swarmMod ? 45 : 90) === 0 && GAME.lastWaveT !== GAME.time && !(GAME.tod && (GAME.tod.noSpawn || GAME.tod.phase >= 4))) {
                 GAME.lastWaveT = GAME.time;
                 GAME.spawnSwarm();
             }
@@ -9830,7 +9831,7 @@ var GAME = {
         if(!GAME.on) return;
         const ov = document.getElementById('overlay-pause');
         const opening = ov.classList.contains('hidden');
-        // DUELS: each player only has 3:00 of pause time for the whole duel
+        // DUELS: each player only has 1:00 of pause time for the whole duel
         if(GAME.mp && GAME.mp.mode === 'duels') { if(opening) { if(!MP.duelPauseStart(hard === true)) return; } else MP.duelPauseStop(); }
         else { const pl = document.getElementById('mp-pause-left'); if(pl) pl.classList.add('hidden'); }
         ov.classList.toggle('hidden');
@@ -12866,7 +12867,7 @@ var NET = {
             });
             c.on('message', (tp, p) => { if(this.code !== code) return; let m; try { m = JSON.parse(p.toString()); } catch(e) { return; } this.onRelay(m, c); });
             c.on('error', () => { if(!ok) fail('ERROR'); });
-            c.on('close', () => { if(!ok) fail('CLOSED'); else if(this.mq !== c && this.code === code) { set('DROPPED'); this.mqs = this.mqs.filter(x => x !== c); } });
+            c.on('close', () => { if(!ok) fail('CLOSED'); else if(this.mq !== c && this.code === code) { set(c._unused ? 'OK - NOT NEEDED' : 'DROPPED'); this.mqs = this.mqs.filter(x => x !== c); } });
         });
     },
     // the relay both devices reached: keep it (and let it reconnect by itself if it drops for a moment)
@@ -12874,7 +12875,7 @@ var NET = {
         if(!c) c = this.mqs[0] || null;
         this.mq = c;
         if(c) { try { c.options.reconnectPeriod = 2500; } catch(e) {} this.diagSet('link', c._relayN ? c._relayN.split(' (')[0] : 'RELAY'); }
-        if(this.role === 'guest') { const others = this.mqs.filter(x => x !== c); this.mqs = c ? [c] : []; others.forEach(x => { try { x.end(true); } catch(e) {} }); } // the host keeps listening on all of them
+        if(this.role === 'guest') { const others = this.mqs.filter(x => x !== c); this.mqs = c ? [c] : []; others.forEach(x => { x._unused = true; try { x.end(false); } catch(e) {} }); } // the host keeps listening on all of them (v3.15.6: polite close, no 'bye')
     },
     relayPubOn: function(c, o, qos) { if(c && c.connected) { try { c.publish(this.relayTx, JSON.stringify(o), { qos: qos || 0 }); } catch(e) {} } },
     relayPub: function(o, qos) { if(this.mq) this.relayPubOn(this.mq, o, qos); else this.mqs.forEach(c => this.relayPubOn(c, o, qos)); },
@@ -12894,6 +12895,7 @@ var NET = {
         const partner = this.role === 'host' ? this.relayPeer : this.relayHost;
         if(m.k === 'bye') {
             if(m.id !== partner) return;
+            if(this.relayOn && this.mq && c !== this.mq) return; // a spare relay closing, not your friend leaving
             if(this.role === 'host') { this.relayPeer = ''; if(this.relayOn) this.mq = null; }
             if(this.relayOn) { this.relayOn = false; this.open = false; this.diagSet('link', 'LOST'); MP.onLost(); }
             return;
@@ -12946,7 +12948,7 @@ var MP = {
     mode: 'duels', duelMap: 1, duoArena: 1,
     party: false, role: null, partner: null, partnerInMenu: false, inMenu: true, busy: false, err: '', joinCode: '',
     timerI: 0, pickDeadline: 0,
-    ver: function() { return 'mp4-' + Object.keys(ASSETS).length + '-' + Object.keys(WEAPONS).length; },
+    ver: function() { return 'mp5-' + Object.keys(ASSETS).length + '-' + Object.keys(WEAPONS).length; },
     send: function(t, d) { NET.send(t, d || {}); },
     toast: function(m, t) { try { ui.toast(m, t); } catch(e) {} },
     duoMaps: function() { return MAPS.filter(m => m.duo).sort((a, b) => a.duo - b.duo); },
@@ -13281,11 +13283,11 @@ var MP = {
         this.send('end', res);
         this.duoResults(res);
     },
-    // DUELS pause allowance: 3:00 in total, used up while the pause menu is open, kept between pauses
+    // DUELS pause allowance: 1:00 in total (v3.15.8, was 3:00), used up while the pause menu is open, kept between pauses - the duel stops for both
     duelPauseStart: function(away) {
         const mp = GAME.mp; if(!mp) return true;
         if(mp.pauseLeft <= 0) {
-            this.toast('NO PAUSE TIME LEFT - YOU USED YOUR 3:00 FOR THIS DUEL', 'error');
+            this.toast('NO PAUSE TIME LEFT - YOU USED YOUR 1:00 FOR THIS DUEL', 'error');
             // left the tab / closed the lid with no pause time: 15 seconds to come back or it's a forfeit
             if(away) { clearTimeout(this.awayT); this.awayT = setTimeout(() => { if(document.hidden && GAME.on && GAME.mp && GAME.mp.mode === 'duels' && !GAME.mp.me) this.roundEnd(false, true); }, 15000); }
             return false;
@@ -13312,7 +13314,7 @@ var MP = {
         if(!mp || mp.mode !== 'duels' || !mp.pauseAt) { clearInterval(this.pauseI); return; }
         if(document.getElementById('overlay-pause').classList.contains('hidden')) { this.duelPauseStop(); return; } // closed some other way
         const left = this.duelPauseLeft(), sec = Math.ceil(left / 1000);
-        if(el) { el.classList.remove('hidden'); el.innerHTML = `PAUSE TIME LEFT<b>${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</b>`; }
+        if(el) { el.classList.remove('hidden'); el.innerHTML = `PAUSE TIME LEFT<b>${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</b><span>THE DUEL IS PAUSED FOR BOTH OF YOU</span>`; }
         if(left <= 0 && GAME.on && !document.getElementById('overlay-pause').classList.contains('hidden')) {
             if(document.hidden) { this.duelPauseStop(); GAME.paused = false; ui.hideOverlays(); this.roundEnd(false, true); return; } // still away -> forfeit
             GAME.togglePause(); this.toast('PAUSE TIME USED UP - BACK TO THE DUEL!', 'error');
@@ -13353,7 +13355,7 @@ var MP = {
         }
         t.innerText = res === 'win' ? 'YOU WIN THE DUEL!' : (me.forfeit ? 'YOU FORFEITED - YOUR RIVAL WINS' : (res === 'lose' ? 'YOU LOST THE DUEL' : 'THE DUEL IS A TIE!'));
         t.style.color = res === 'win' ? '#00ff66' : (res === 'lose' ? '#ff2a6d' : '#ffd700');
-        st.innerText = `YOU: ${me.forfeit ? 'FORFEIT' : me.k + ' KILLS'}\nRIVAL: ${!r.done ? (r.k || 0) + ' KILLS' : (r.done.left ? 'LEFT THE GAME' : (r.done.forfeit ? 'FORFEIT' : r.done.k + ' KILLS'))}\n\nGOLD: +${me.g} | SEASON XP: +${me.xp}${chestLine}`;
+        st.innerText = `YOU: ${me.forfeit ? 'FORFEIT' : me.k + ' KILLS'}\nRIVAL: ${!r.done ? (r.k || 0) + ' KILLS' : (r.done.left ? 'LEFT THE DUEL = FORFEIT' : (r.done.forfeit ? 'FORFEIT' : r.done.k + ' KILLS'))}\n\nGOLD: +${me.g} | SEASON XP: +${me.xp}${chestLine}`;
     },
     duoResults: function(res) {
         const d = SaveSystem.d;
@@ -15801,7 +15803,8 @@ TOD.HOUSE = {
         this.bg = c; return c;
     },
     // light sources: [x, y, radius, room]
-    LIGHTS: [[60, 126, 70, 'hall'], [250, 126, 95, 'living'], [148, 150, 50, 'living'], [510, 126, 95, 'kitchen'], [270, 42, 90, 'upHall'], [75, 42, 70, 'bath'], [515, 42, 85, 'bed'], [446, 90, 34, 'desk']],
+    LIGHTS: [[60, 126, 70, 'hall'], [250, 126, 95, 'living'], [133, 141, 50, 'living', 'table'], [510, 126, 95, 'kitchen'], [270, 42, 90, 'upHall'], [75, 42, 70, 'bath'], [515, 42, 85, 'bed'], [446, 90, 34, 'desk']],
+    tableLamp: function(g, x, y, on) { const R = TOD.R; R(g, x - 4, y - 5, 8, 1, on ? '#fff0c0' : '#5a5448'); R(g, x - 5, y - 4, 10, 5, on ? '#ffe9a8' : '#4a4a40'); R(g, x - 6, y + 1, 12, 1, on ? '#fff6d0' : '#3a3a30'); R(g, x - 5, y - 4, 1, 5, on ? '#ffd890' : '#3a3a30'); R(g, x - 1, y + 2, 2, 5, '#3a2a1a'); R(g, x - 3, y + 7, 6, 2, '#2a1a10'); },
     lamp: function(g, x, y, on) { const R = TOD.R; R(g, x - 1, y - 6, 2, 5, '#2a2a2a'); R(g, x - 6, y - 2, 12, 4, on ? '#ffe9a8' : '#4a4a40'); R(g, x - 4, y + 2, 8, 1, on ? '#fff6d0' : '#3a3a30'); }
 };
 // shared house state + drawing (the story start and the ending use the same house)
@@ -15880,7 +15883,7 @@ TOD.houseDraw = function(g, st) {
     // the note under the door
     if(st.note) { const nx = st.noteX; R(nx, 194, 9, 2, '#e8dcc0'); R(nx + 2, 194, 4, 1, '#8a1a1a'); }
     // ceiling lamps
-    H.LIGHTS.forEach(([x, y, r, k]) => { if(k !== 'desk') H.lamp(g, x - st.camX, y, TOD.houseLit(st, k) > 0.3); });
+    H.LIGHTS.forEach(([x, y, r, k, kind]) => { if(k === 'desk') return; if(kind === 'table') H.tableLamp(g, x - st.camX, y, TOD.houseLit(st, k) > 0.3); else H.lamp(g, x - st.camX, y, TOD.houseLit(st, k) > 0.3); });
     // the hole in the floor
     if(st.cracks.length) { g.strokeStyle = st.red ? '#ff2a2a' : '#000'; g.lineWidth = 1; st.cracks.forEach(c => { g.beginPath(); g.moveTo(c[0] - st.camX, c[1]); for(let i = 2; i < c.length; i += 2) g.lineTo(c[i] - st.camX, c[i + 1]); g.stroke(); }); }
     if(st.hole > 0) { const hw = st.hole * 22, hx = (st.holeX || 70) - st.camX; g.fillStyle = '#000'; g.beginPath(); g.ellipse(hx, 197, hw, Math.max(1, hw * 0.28), 0, 0, 6.283); g.fill();
@@ -16832,7 +16835,7 @@ var TODB = {
         if(!PERF.low) { ctx.save(); for(let i = 0; i < 6; i++) { const k = ((T.t * 0.6 + i * 20) % 120) / 120; ctx.globalAlpha = 0.25 * (1 - k); ctx.fillStyle = T.phase >= 3 ? '#3a0812' : '#24122e'; ctx.beginPath(); ctx.arc(x + Math.sin(i * 2 + T.t * 0.02) * 50, y + 90 + k * 60, 26 + k * 20, 0, 6.283); ctx.fill(); } ctx.restore(); }
         const gr = ctx.createRadialGradient(x, y, 30, x, y, 230); gr.addColorStop(0, T.phase >= 3 ? 'rgba(255,40,20,0.25)' : 'rgba(255,120,20,0.18)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = gr; ctx.fillRect(x - 230, y - 230, 460, 460);
         // the head is drawn on a small canvas first, so a hit can flash it white (a canvas filter here made the whole fight lag)
-        const hc = TODB._hc || (TODB._hc = document.createElement('canvas')); if(hc.width !== 300) { hc.width = 300; hc.height = 300; }
+        const hc = TODB._hc || (TODB._hc = document.createElement('canvas')); if(hc.width !== 300 || hc.height !== 300) { hc.width = 300; hc.height = 300; } // a new canvas is 300x150, so check both (v3.15.6: this cut off the bottom half of his face)
         const hg = hc.getContext('2d'); hg.clearRect(0, 0, 300, 300); hg.imageSmoothingEnabled = false;
         TOD.art.head(hg, 150, 160, 3.2, b.look, { blink: Math.max(0, b.blink), rage: T.phase >= 3, open: b.mouth, pupil: T.atk && T.atk.type === 'beam' ? 1.5 : 3, crack: b.crack || 0 });
         if(b.flashT > 0) { b.flashT--; hg.globalCompositeOperation = 'source-atop'; hg.globalAlpha = 0.4; hg.fillStyle = '#ffffff'; hg.fillRect(0, 0, 300, 300); hg.globalAlpha = 1; hg.globalCompositeOperation = 'source-over'; }
@@ -17156,7 +17159,7 @@ var TODB = {
         if(A && A.type === 'clap' && A.t <= A.warn + 12) { const y = A.y - cy, k = Math.min(1, A.t / A.warn); ctx.save(); ctx.globalAlpha = 0.18 + k * 0.25 + (A.t % 20 < 10 ? 0.08 : 0); ctx.fillStyle = '#ffd13b'; ctx.fillRect(A.x - cx - 560, y - A.band / 2, 1120, A.band);
             ctx.globalAlpha = 0.9; ctx.fillStyle = '#ffd13b'; ctx.fillRect(A.x - cx - 560, y - A.band / 2, 1120, 2); ctx.fillRect(A.x - cx - 560, y + A.band / 2 - 2, 1120, 2); ctx.restore(); }
         if(A && A.type === 'beam' && b) { const e = this.eyePos(b), ex = e.x - cx, ey = e.y - cy;
-            if(A.st === 'charge') { ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = '#ff2a1a'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); const a0 = A.a0 || 0; [-0.75, 0.75].forEach(o => { ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a0 + o) * 900, ey + Math.sin(a0 + o) * 900); ctx.stroke(); }); ctx.restore(); }
+            if(A.st === 'charge') { ctx.save(); ctx.globalAlpha = 0.5; ctx.strokeStyle = '#ff2a1a'; ctx.lineWidth = 2; ctx.setLineDash([10, 8]); const a0 = A.a0; if(isFinite(a0)) [-0.75, 0.75].forEach(o => { ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a0 + o) * 900, ey + Math.sin(a0 + o) * 900); ctx.stroke(); }); ctx.restore(); }
             else if(A.ang != null) { const a = A.ang; ctx.save(); ctx.lineCap = 'butt'; ctx.globalAlpha = 0.35; ctx.strokeStyle = '#ff2a1a'; ctx.lineWidth = 46; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a) * 1400, ey + Math.sin(a) * 1400); ctx.stroke();
                 ctx.globalAlpha = 0.9; ctx.lineWidth = 18; ctx.strokeStyle = '#ff5a2a'; ctx.stroke(); ctx.lineWidth = 6; ctx.strokeStyle = '#fff2c8'; ctx.stroke(); ctx.restore(); } }
         // ghost trails
@@ -17764,7 +17767,7 @@ TODB.PH = [[1, 0.66, 55], [0.66, 0.33, 55], [0.33, 0.2, 40], [0.2, 0, 70]];
     const DH = TODB.drawHouse;
     TODB.drawHouse = function(ctx, h, cx, cy) {
         const T = GAME.tod;
-        if(T && T.plat && T.plat.k >= 1 && !h.fell && this.offPlat(h, T.plat)) { h.wasDead = h.dead; h.fell = GAME.frame; h.dead = true; }
+        if(T && T.plat && T.plat.k >= 1 && !h.fell && this.offPlat(h, T.plat)) { if(this.groundGone) this.groundGone(h); else { h.wasDead = h.dead; h.fell = GAME.frame; h.dead = true; } }
         if(h.fell) { if(h.wasDead) return; const k = Math.min(1, (GAME.frame - (h.fellF || (h.fellF = GAME.frame))) / 90); if(k >= 1) return; ctx.save(); const x = h.x - cx, y = h.y - cy; ctx.translate(x, y + k * 160); ctx.scale(1 - k * 0.8, 1 - k * 0.8); ctx.globalAlpha = 1 - k; ctx.drawImage(TODST.sprite(h), -h.w / 2 - 14, -h.wh - h.d - 18); ctx.restore(); return; }
         return DH.call(this, ctx, h, cx, cy);
     };
@@ -18531,7 +18534,7 @@ TOD.houseDark = function(g, st) {
     };
     const GD = GAME.draw; GAME.draw = function() { try { return GD.apply(this, arguments); } finally { if(GAME._cwh) { C.W = GAME._cwh[0]; C.H = GAME._cwh[1]; GAME._cwh = null; } } };
     const TK = TODB.tick; TODB.tick = function() { TK.apply(this, arguments); const T = GAME.tod; if(!T) return;
-        GAME.es.forEach(e => { if(!e.boss && !e.todNode && !e._todCap) { e._todCap = 1; e.dmg = Math.min(e.dmg || 0, Math.round(5 + T.phase * 1.5)); } }); // softer hits: you have no armor
+        GAME.es.forEach(e => { if(!e.boss && !e.todNode && !e._todCap) { e._todCap = 1; e.dmg = Math.min(e.dmg || 0, Math.round(4 + T.phase * 1.2)); } }); // softer hits: you have no armor (v3.15.11: a bit softer)
         this.camUpd(); };
     const UH = TODB.updHold; TODB.updHold = function() { UH.apply(this, arguments); this.camUpd(); };
     const ST = TODB.start; TODB.start = function(opt) { GAME.camOv = null; const r = ST.call(this, opt); if(GAME.tod) { GAME.tod.cam = null; GAME.tod.camTo = null; } return r; };
@@ -19079,7 +19082,7 @@ TOD.npc.vine = function(g, x, y, t) { const R = (a, c, w, h, col) => TOD.R(g, x 
         if(t > 70 && t < 245 && t % 3 === 0) { const alive = T.chunks.filter(c => c.alive); if(alive.length) { const maxB = Math.max(...alive.map(c => c.band)); const pool = alive.filter(c => c.band >= maxB - 1); this.breakChunk(pool[Math.floor(Math.random() * pool.length)]); } }
         if(t === 245) T.chunks.forEach(c => this.breakChunk(c));
         T.plat.k = T.chunks.filter(c => !c.alive).length / T.chunks.length;
-        T.houses.forEach(h => { if(h.fell || !this.offPlat(h, T.plat)) return; const c = this.chunkAt(h.x, h.y); if(!c || !c.alive) { h.wasDead = h.dead; h.fell = t; h.dead = true; } });
+        T.houses.forEach(h => { if(h.fell || h.brkAt || !this.offPlat(h, T.plat)) return; const c = this.chunkNear(h); if(!c || !c.alive) this.groundGone(h); }); // v3.15.9: it blows apart, then falls
         if(t === 250) { T.plat.k = 1; T.phase = 4; TODB.MAP.enemies = ['e_ghost', 'e_witch_bat']; T.title = 180; T.titleTxt = 'LAST STAND'; T.titleSub = 'METEORS ARE FALLING'; T.atkCd = 90; TOD.au.roar();
             GAME.es.forEach(e => { if(!e.boss && Math.hypot(e.x - T.plat.x, e.y - T.plat.y) > T.plat.r) e.d = true; }); }
         if(t >= 280) { T.hold = null; T.camTo = null; T.hands.forEach(h => { h.busy = false; }); }
@@ -19217,6 +19220,596 @@ TOD.npc.vine = function(g, x, y, t) { const R = (a, c, w, h, col) => TOD.R(g, x 
         el.querySelector('.tdw-go').onclick = () => { AU.ui(); el.classList.add('hidden'); el.innerHTML = ''; this._winShown = true; try { EN.call(this, true); } finally { this._winShown = false; } };
     };
 })();
+/* ---------- v3.15.6: his whole head on screen (houses below him were drawn OVER his lower face - he floats, so he's drawn
+   on top now), the grab uses HIS hand (it swoops in fast, closes around you, carries you up), a real movie for the finale,
+   and the win stats wait until the very end of the event ---------- */
+(function() {
+    // ---- he floats in the air: draw him after everything on the ground ----
+    const SB = TODB.spawnBoss; TODB.spawnBoss = function() { const b = SB.apply(this, arguments); b.draw = function() {}; b._top = true; return b; };
+    const DW = TODB.drawWorld; TODB.drawWorld = function(ctx, cx, cy) { const T = GAME.tod; if(T && !T.eye && T.boss && T.boss._top && !T.boss.gone && !(T.hold && T.hold.kind === 'death')) this.bossDraw(T.boss, ctx, cx, cy); return DW.call(this, ctx, cx, cy); };
+    // ---- THE GRAB, with his own hand: it swoops in, the fist closes around you, he carries you up into his eye ----
+    const U = 4.2, SW = 16, handCv = (pose, rage) => { const k = U + '|' + pose + '|1|' + (rage ? 1 : 0); if(!TOD.art._hc || !TOD.art._hc[k]) TOD.art.hand(TODB._sg || (TODB._sg = document.createElement('canvas').getContext('2d')), -999, -999, U, pose, true, rage); return TOD.art._hc[k]; };
+    TODB.holdGrab = function(H) {
+        const T = GAME.tod, p = GAME.p, b = T.boss, h = T.hands[0], t = H.t, e = this.eyePos(b);
+        if(t === 1) { T.atk = null; T.hands.forEach(x => x.busy = false); h.busy = true; h.grab = true; h.vis = 1; h.pose = 0;
+            H.side = b.x >= p.x ? 1 : -1; H.sx = h.x; H.sy = h.y - h.h - 40;
+            if(!isFinite(H.sx) || !isFinite(H.sy) || Math.hypot(H.sx - p.x, H.sy - p.y) > 650) { H.sx = b.x - 150; H.sy = b.y + 40; }
+            H.hx = H.sx; H.hy = H.sy; H.ang = 0; H.s = 1; H.pose = 0; H.trail = []; T.title = 0; TOD.au.whoosh(); TOD.au.tone(160, 'sawtooth', 1, 0.15, 60); }
+        const tx = p.x, ty = p.y - 6 * U; // where the fist sits when your waist is inside it
+        if(t <= SW) { const k = t / SW, kk = k * k, dx = tx - H.sx, dy = ty - H.sy, d = Math.hypot(dx, dy) || 1, arc = Math.sin(k * Math.PI) * Math.min(90, d * 0.25);
+            H.hx = H.sx + dx * kk - dy / d * arc * H.side; H.hy = H.sy + dy * kk + dx / d * arc * H.side;
+            const dir = Math.atan2(ty - H.hy, tx - H.hx) - Math.PI / 2, aim = Math.atan2(Math.sin(dir), Math.cos(dir)) * Math.max(0, Math.min(1, (SW - t) / 6));
+            H.ang = Math.max(-1.6, Math.min(1.6, aim));
+            H.trail.push({ x: H.hx, y: H.hy, a: H.ang }); if(H.trail.length > 4) H.trail.shift();
+            for(let i = 0; i < 5; i++) GAME.particles.push({ x: H.hx + (Math.random() - 0.5) * 70, y: H.hy + (Math.random() - 0.5) * 70, vx: -dx / d * 3, vy: -dy / d * 3, g: 0, life: 12, c: i % 2 ? '#ffffff' : (T.phase >= 3 ? '#b89a8a' : '#a4b48a'), sz: 3 });
+            T.camTo = { x: p.x, y: p.y - 20, z: 1 + 0.5 * k, k: 0.3, kz: 0.2 }; }
+        if(t === SW) { H.pose = 1; H.trail = []; H.ang = 0; T.hidePl = true; GAME.shake = 16; TOD.au.thud(); TOD.au.scare(); GAME.spawnShockwave(p.x, p.y, '#ffffff', 110, 12, 5);
+            for(let i = 0; i < 18; i++) { const a = Math.random() * 6.283; GAME.particles.push({ x: p.x, y: p.y, vx: Math.cos(a) * 5, vy: Math.sin(a) * 4, g: 0.15, life: 26, c: i % 3 ? '#5a4a3a' : '#ffffff', sz: 4 }); } }
+        if(t > SW && t <= 40) { H.hx = tx + Math.sin(t * 1.3) * 2; H.hy = ty; T.camTo = { x: p.x, y: p.y - 24, z: 1.9, k: 0.2, kz: 0.12 }; }
+        const ex = e.x, ey = e.y + 118;
+        if(t > 40 && t <= 130) { const k = TOD.ease((t - 40) / 90); H.hx = tx + (ex - tx) * k; H.hy = ty + (ey - ty) * k - Math.sin(k * Math.PI) * 40; H.ang = Math.sin(t * 0.12) * 0.06; b.blink = 0;
+            if(t % 16 === 0) TOD.au.whoosh(); GAME.shake = Math.max(GAME.shake, 1.5); T.camTo = { x: H.hx, y: H.hy - 20, z: 1.9 - 0.5 * Math.sin(k * Math.PI), k: 0.16, kz: 0.08 }; }
+        if(t > 130 && t <= 180) { const k = TOD.ease((t - 130) / 50); H.s = 1 - 0.7 * k; H.hx = ex + (e.x - ex) * k; H.hy = ey + (e.y - 6 * U * H.s - ey) * k; H.ang = 0;
+            T.camTo = { x: e.x, y: e.y, z: 1.5 + k * 5.5, k: 0.2, kz: 0.09 }; H.dark = Math.max(0, (t - 160) / 20); if(t === 140) TOD.au.roar(); }
+        // the arm is drawn to the hand's wrist from h.x / h.y (see drawArms), so keep those on the wrist
+        const s = H.s || 1, a = H.ang || 0, wx = H.hx + 17 * U * s * Math.sin(a), wy = H.hy - 17 * U * s * Math.cos(a);
+        h.x = wx; h.h = 0; h.y = wy + 40 + 15 * U;
+        if(t === 180) { this.enterEye(); h.grab = false; h.busy = false; h.vis = 1; h.pose = 0; h.h = 400; T.camTo = null; T.cam = { x: 0, y: 0, z: 1, blend: 1 }; T.blackIn = 1.2; T.hold = null; }
+    };
+    TODB.drawGrab = function(ctx, cx, cy) {
+        const T = GAME.tod, H = T.hold; if(!H || H.kind !== 'grab' || H.hx == null) return;
+        const rage = T.phase >= 3, s = H.s || 1, c = handCv(H.pose || 0, rage); if(!c) return;
+        const put = (x, y, a, al) => { ctx.save(); if(al != null) ctx.globalAlpha = al; ctx.translate(Math.round(x - cx), Math.round(y - cy)); ctx.rotate(a); ctx.scale(s, s); ctx.drawImage(c, Math.round(-c.width / 2), Math.round(-22 * U)); ctx.restore(); };
+        if(H.trail) H.trail.forEach((q, i) => put(q.x, q.y, q.a, 0.1 + i * 0.07)); // motion blur while it swoops
+        put(H.hx, H.hy, H.ang || 0);
+        if(H.pose !== 1) return;
+        // you, held around the waist: head + chest above his fingers, legs kicking inside his fist
+        const pl = GAME.p, ps = 64;
+        ctx.save(); ctx.translate(Math.round(H.hx - cx), Math.round(H.hy - cy)); ctx.rotate(H.ang || 0); ctx.scale(s, s);
+        if(pl && pl.s) { ctx.save(); ctx.translate(Math.round(Math.sin(H.t * 0.9) * 2), Math.round(6 * U - 8)); ctx.rotate(Math.sin(H.t * 0.5) * 0.08); if(H.side < 0) ctx.scale(-1, 1); ctx.drawImage(pl.s, -ps / 2, -ps / 2, ps, ps); ctx.restore(); }
+        ctx.beginPath(); ctx.rect(-13 * U, 5 * U, 26 * U, 11 * U); ctx.clip(); ctx.drawImage(c, Math.round(-c.width / 2), Math.round(-22 * U)); // his fingers in front of you
+        ctx.restore();
+    };
+})();
+/* ---------- THE FINALE: a movie on the story screen (side view, pixel art), about 13 seconds, can't be skipped ----------
+   he stares at you -> his eye up close -> his hands come at you -> he SWATS you -> you fly through the air ->
+   slow motion: you float while he reaches for you... his eye goes WIDE... light pours out of his cracks... he EXPLODES -> white */
+(function() {
+    const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+    const disc = (g, x, y, r, c) => { g.fillStyle = c; x = Math.round(x); y = Math.round(y); r = Math.max(1, Math.round(r)); for(let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); if(w > 0) g.fillRect(x - w, y + dy, w * 2, 1); } };
+    const ring = (g, x, y, r, sz, c) => { g.fillStyle = c; const n = Math.max(14, Math.round(r * 0.8)); for(let i = 0; i < n; i++) { const a = i / n * 6.283; g.fillRect(Math.round(x + Math.cos(a) * r - sz / 2), Math.round(y + Math.sin(a) * r * 0.85 - sz / 2), sz, sz); } };
+    const E = (k) => TOD.ease(Math.max(0, Math.min(1, k))), L = (a, b, k) => a + (b - a) * k;
+    // you, drawn small first so turning you keeps the pixels square
+    const guyCv = (pose, walkT) => { const c = TOD._fg || (TOD._fg = document.createElement('canvas')); c.width = 40; c.height = 40; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; TOD.drawGuy(g, 20, 34, 1, walkT, pose, { scared: true }); return c; };
+    const guy = (g, x, y, rot, sc, pose, walkT) => { const c = guyCv(pose, walkT); g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(rot); g.drawImage(c, -20 * sc, -21 * sc, 40 * sc, 40 * sc); g.restore(); };
+    const hand = (g, x, y, u, pose, flip, rot) => { TOD.art.hand(TOD._fh || (TOD._fh = document.createElement('canvas').getContext('2d')), -999, -999, u, pose, flip, true); const c = TOD.art._hc[u + '|' + pose + '|' + (flip ? 1 : 0) + '|1']; g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(rot || 0); g.drawImage(c, Math.round(-c.width / 2), Math.round(-22 * u)); g.restore(); };
+    // his long arm, shoulder -> wrist, made of square pixel discs
+    const arm = (g, sx, sy, hx, hy, w, sag) => { const mx = (sx + hx) / 2, my = Math.max(sy, hy) + sag;
+        [[2, '#0a0608', 0], [0, '#5a3a30', 0], [-w * 0.45, '#7a5a4a', -w * 0.18]].forEach(([dw, col, off]) => { for(let i = 0; i <= 18; i++) { const t = i / 18, q = 1 - t, x = q * q * sx + 2 * q * t * mx + t * t * hx, y = q * q * sy + 2 * q * t * my + t * t * hy; disc(g, x + off, y + off, (w * (1 - t * 0.35)) / 2 + dw, col); } });
+        for(let i = 0; i <= 6; i++) { const t = i / 6 * 0.3, q = 1 - t, x = q * q * sx + 2 * q * t * mx + t * t * hx, y = q * q * sy + 2 * q * t * my + t * t * hy; disc(g, x, y, w * 0.72, '#1e1026'); } }; // torn sleeve
+    const wrist = (x, y, u, rot) => [x + 17 * u * Math.sin(rot || 0), y - 17 * u * Math.cos(rot || 0)];
+    // smoke body under the head
+    const smoke = (g, x, y, u, f) => { for(let i = 0; i < 7; i++) disc(g, x + Math.sin(i * 1.7 + f * 0.03) * 10 * u, y + 26 * u + i * 9 * u, (16 + i * 3) * u, i % 2 ? '#1a0610' : '#24081a'); };
+    // his eye opened WIDE (drawn over the head's eye)
+    const wideEye = (g, x, y, r, look, k) => { disc(g, x, y, r + 3, '#120814'); disc(g, x, y, r, '#f2ead8');
+        g.fillStyle = '#d8343a'; for(let i = 0; i < 10; i++) { const a = i * 0.63 + 0.2; for(let j = 0; j < 5; j++) { const rr = r * (0.95 - j * 0.09); g.fillRect(Math.round(x + Math.cos(a + j * 0.04) * rr), Math.round(y + Math.sin(a + j * 0.04) * rr), 1, 1); } }
+        const ix = x + look[0] * r * 0.3 + (Math.random() - 0.5) * k * 2, iy = y + look[1] * r * 0.2 + (Math.random() - 0.5) * k * 2, ir = r * (0.45 - 0.17 * k);
+        disc(g, ix, iy, ir, '#ff2a1a'); disc(g, ix, iy, ir * 0.7, '#9a0a0a'); disc(g, ix, iy, Math.max(1, ir * (0.45 - 0.35 * k)), '#000'); R(g, ix + ir * 0.3, iy - ir * 0.5, 2, 2, '#fff'); };
+    const CR = [[-13, -2, -18, -8, -24, -4], [13, -4, 17, -12, 22, -9], [-10, 9, -14, 14, -12, 22], [11, 8, 15, 14, 21, 12], [-3, -13, -5, -20, -1, -26], [3, 13, 6, 18, 2, 24]];
+    const cracks = (g, x, y, u, k, glow) => { const col = glow > 0.3 ? (Math.floor(TOD.t / 3) % 2 ? '#fff6c0' : '#ffd13b') : '#0a0204', sz = Math.max(1, Math.round(u * 0.7));
+        CR.slice(0, Math.ceil(k * CR.length)).forEach(p => { for(let s = 0; s < 2; s++) { const ax = p[s * 2], ay = p[s * 2 + 1], bx = p[s * 2 + 2], by = p[s * 2 + 3], n = Math.ceil(Math.hypot(bx - ax, by - ay)); for(let i = 0; i <= n; i++) { const t = i / n; g.fillStyle = col; g.fillRect(Math.round(x + (ax + (bx - ax) * t) * u), Math.round(y + (ay + (by - ay) * t - 6) * u), sz, sz); } } }); };
+    const bg = (g, W) => { const cols = ['#120208', '#1e040c', '#2c0610', '#3c0a14', '#4a0e16', '#3c0a14', '#2c0610', '#1e040c']; for(let i = 0; i < 8; i++) R(g, 0, i * 27, W, 27, cols[i]); };
+    TOD.S.finale = {
+        init: function() { this.ct = 0; this.ft = 0; TOD.fadeA = 1; TOD.fadeTarget = 0; TOD.fadeSpd = 0.025; TOD.setTask(''); TOD.candy = -1; TOD.au.droneSet(0.1);
+            this.rocks = []; for(let i = 0; i < 34; i++) this.rocks.push({ x: Math.random() * 420 - 20, y: Math.random() * 216, s: 2 + Math.floor(Math.random() * 6), v: 0.15 + Math.random() * 0.4, z: Math.random() < 0.3 });
+            this.bits = null; this.white = 0; },
+        upd: function() {
+            const c = ++this.ct, T = TOD, slow = c >= 470 && c < 640, stop = c >= 352 && c < 360; // slow motion / hit-stop
+            if(!stop) this.ft += slow ? 0.3 : 1;
+            if(c === 40) { T.au.tone(70, 'sawtooth', 1.4, 0.12, 40); T.say('"...YOU... HURT... ME..."', 150, '#ff6a6a'); }
+            if(c === 150) { T.au.heart(); T.shake = 3; } if(c === 196) { T.au.heart(); T.au.tone(2200, 'sine', 0.3, 0.05, 3000); } if(c === 236) T.au.heart();
+            if(c === 262) { T.au.roar(); T.shake = 4; } if(c === 300 || c === 338) T.au.whoosh();
+            if(c === 352) { T.au.thud(); T.au.crash(); T.shake = 14; T.flash = 0.9; T.flashCol = '#ffffff'; }
+            if(c === 362 || c === 410) T.au.whoosh();
+            if(c === 470) T.au.tone(110, 'sine', 3, 0.16, 55);
+            if(c === 520 || c === 580) T.au.heart();
+            if(c === 556) { T.au.tone(2600, 'sine', 1.2, 0.07, 4200); T.shake = 2; }
+            if(c === 600) T.au.rumble(2); if(c >= 600 && c < 640 && c % 8 === 0) { T.au.crack(); T.shake = Math.max(T.shake, 3 + (c - 600) / 8); }
+            if(c === 640) { T.au.shatter(); T.au.roar(); T.au.rumble(3); T.shake = 18; T.flash = 1.2; T.flashCol = '#fff6d0';
+                this.bits = []; const cols = ['#2a0812', '#3a0c1a', '#5a1424', '#ff5a2a', '#ffd13b', '#f2ead8', '#2e1e16'];
+                for(let i = 0; i < 70; i++) { const a = Math.random() * 6.283, sp = 1.5 + Math.random() * 6; this.bits.push({ x: 286, y: 92, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 1, s: 2 + Math.floor(Math.random() * 7), c: cols[i % cols.length] }); } }
+            if(this.bits) this.bits.forEach(b => { b.x += b.vx; b.y += b.vy; b.vy += 0.04; b.vx *= 0.99; });
+            if(c > 690) this.white = Math.min(1, (c - 690) / 50);
+            const fly = c >= 352 && c < 470, sp = fly ? 7 : (slow ? 0.25 : 1);
+            this.rocks.forEach(r => { if(fly) r.x += sp * (r.z ? 1.6 : 1); else r.y -= r.v * sp; if(r.x > 430) { r.x = -20; r.y = Math.random() * 216; } if(r.y < -10) { r.y = 226; r.x = Math.random() * 420 - 20; } });
+            if(c === 760) T.go('ending');
+        },
+        draw: function(g) {
+            const W = TOD.W, H = TOD.H, c = this.ct, f = this.ft; g.imageSmoothingEnabled = false;
+            bg(g, W);
+            this.rocks.forEach(r => { R(g, r.x, r.y, r.s, Math.max(1, r.s - 1), r.z ? '#2a1014' : '#1a080c'); R(g, r.x, r.y, r.s, 1, '#4a2026'); if(c >= 352 && c < 470) R(g, r.x - r.s * 3, r.y + 1, r.s * 3, 1, 'rgba(255,255,255,0.12)'); });
+            if(c < 150 || (c >= 262 && c < 352)) this.wide(g, c, f);
+            else if(c < 262) this.eye(g, c, f);
+            else if(c < 470) this.fly(g, c, f);
+            else this.slow(g, c, f);
+            if(c >= 470 && c < 640) { g.fillStyle = 'rgba(110,150,255,0.07)'; g.fillRect(0, 0, W, H); }
+            if(this.white > 0) { g.globalAlpha = this.white; R(g, 0, 0, W, H, '#ffffff'); g.globalAlpha = 1; }
+            R(g, 0, 0, W, 16, '#000'); R(g, 0, H - 16, W, 16, '#000'); // movie bars
+        },
+        road: function(g, x, y) { [[0, 112, '#2a2830'], [6, 104, '#1e1a1e'], [12, 90, '#160e10'], [18, 70, '#120a0c'], [24, 46, '#0e0608'], [30, 22, '#0a0406']].forEach(([dy, w, col]) => R(g, x + (112 - w) / 2, y + dy, w, 6, col)); R(g, x, y, 112, 1, '#4a464e'); R(g, x + 20, y + 2, 12, 1, '#ffd13b'); R(g, x + 56, y + 2, 12, 1, '#ffd13b'); R(g, x + 92, y + 2, 12, 1, '#ffd13b'); },
+        // shots 1 + 3: the wide shot - him huge on the right, you on a broken piece of road; then his hands come at you and SWAT
+        wide: function(g, c, f) {
+            const bx = 280, by = 84, u = 2, gx = 96, gy = 172, reach = c >= 262;
+            smoke(g, bx, by, u, f);
+            let L1 = { x: 206, y: 154 + Math.sin(f * 0.05) * 3, u: 1.4, rot: 0, pose: 0 }, R1 = { x: 354, y: 150 + Math.cos(f * 0.05) * 3, u: 1.4, rot: 0, pose: 0 }; const ghosts = [];
+            if(reach) { const k = E((c - 262) / 56); L1 = { x: L(206, 156, k), y: L(154, 146, k), u: k > 0.5 ? 2 : 1.4, rot: k * 0.5, pose: 0 };
+                if(c < 320) R1 = { x: L(354, 262, k), y: L(150, 158, k), u: k > 0.5 ? 2 : 1.4, rot: k * 0.3, pose: 0 };
+                else if(c < 340) { const w = E((c - 320) / 20); R1 = { x: L(262, 372, E(w * 1.6)), y: L(158, 46, E((w - 0.3) / 0.7)), u: 2, rot: L(0.3, -0.9, w), pose: 0 }; }
+                else { const w = Math.min(1, (c - 340) / 12), ww = w * w; R1 = { x: L(372, 70, ww), y: L(46, 168, ww), u: 2, rot: L(-0.9, 1.4, ww), pose: 1 }; for(let i = 1; i <= 3; i++) { const q = Math.max(0, ww - i * 0.12); ghosts.push({ x: L(372, 70, q), y: L(46, 168, q), rot: L(-0.9, 1.4, q), a: 0.35 - i * 0.09 }); } } }
+            [[L1, bx - 52], [R1, bx + 52]].forEach(([h, sx]) => { const w = wrist(h.x, h.y, h.u, h.rot); arm(g, sx, by + 46, w[0], w[1], 14, 26); });
+            TOD.art.head(g, bx, by, u, [Math.max(-1, (gx - bx) / 160), reach ? 0.6 : 0.5], { rage: true, open: reach ? 0.9 : 0.3 + Math.sin(f * 0.05) * 0.2, pupil: reach ? 2 : 3, crack: 0 }); cracks(g, bx, by, u, 0.5, 0);
+            ghosts.forEach(q => { g.globalAlpha = q.a; hand(g, q.x, q.y, 2, 1, false, q.rot); g.globalAlpha = 1; });
+            hand(g, L1.x, L1.y, L1.u, L1.pose, true, L1.rot); hand(g, R1.x, R1.y, R1.u, R1.pose, false, R1.rot);
+            this.road(g, gx - 56, gy);
+            if(c < 352) guy(g, gx, gy - 13, 0, 1, 'stand', 0);
+            if(c >= 336 && c < 352) { R(g, gx - 1, gy - 46, 3, 9, '#ffd13b'); R(g, gx - 1, gy - 35, 3, 3, '#ffd13b'); } // "!"
+        },
+        // shot 2: his eye up close, it finds you, the pupil shrinks to a slit
+        eye: function(g, c, f) {
+            const W = TOD.W, k = c - 150, sh = k > 40 ? Math.round((Math.random() - 0.5) * 2) : 0, u = 6, ex = 192 + sh, ey = 100;
+            const look = [L(0.3, -0.8, E(k / 30)), L(-0.2, 0.35, E(k / 30))];
+            TOD.art.head(g, ex, ey + 6 * u, u, look, { rage: true, open: 0.2, pupil: k > 46 ? Math.max(1, 3 - (k - 46) / 10) : 3, crack: 0 }); cracks(g, ex, ey + 6 * u, u, 0.5, 0);
+            if(k > 30) { const ix = ex + look[0] * 4 * u + 10, iy = ey + look[1] * 2.5 * u - 4; R(g, ix, iy, 2, 2, '#f0e6d8'); R(g, ix, iy + 2, 2, 3, '#ffb070'); } // you, tiny, in his eye
+        },
+        // shot 4: you fly through the air, spinning (the camera flies with you)
+        fly: function(g, c, f) {
+            const k = (c - 352) / 118, x = 190 - k * 20 + Math.sin(k * 6) * 6, y = 120 - Math.sin(k * Math.PI) * 18, rot = -(f - 352) * 0.32;
+            const hk = Math.min(1, k * 1.5); TOD.art.head(g, 360 + hk * 70, 70 + hk * 20, 1, [-1, 0.2], { rage: true, open: 0.6, crack: 0 }); // him, far behind you now
+            for(let i = 0; i < 10; i++) R(g, ((i * 53 + c * 9) % 440) - 40, 30 + ((i * 37 + c * 3) % 160), 18 + (i % 3) * 8, 1, 'rgba(255,255,255,0.22)'); // speed lines
+            for(let i = 3; i >= 1; i--) { g.globalAlpha = 0.25 - i * 0.06; guy(g, x + i * 10, y + i * 2, rot + i * 0.32, 2, 'walk', f * 4); } g.globalAlpha = 1;
+            guy(g, x, y, rot, 2, 'walk', f * 4);
+        },
+        // shots 5 + 6: SLOW MOTION. you float, he reaches for you... his eye goes wide... light... BOOM
+        slow: function(g, c, f) {
+            const bx = 286, by = 92, u = 2, k = E((c - 470) / 150), wide = c >= 536 ? E((c - 536) / 30) : 0, glow = c >= 580 ? Math.min(1, (c - 580) / 60) : 0, alive = c < 644;
+            const px = 104 - (c >= 640 ? (c - 640) * 0.8 : 0), py = 104 + Math.sin(f * 0.04) * 5, prot = 2.2 + (f - 470) * 0.012;
+            if(alive) {
+                const shk = Math.round(glow * 3 * (Math.random() - 0.5)), hx = bx + shk, hy = by;
+                smoke(g, hx, hy, u, f);
+                if(glow > 0) { for(let i = 0; i < 12; i++) { const a = i * 0.5236 + 0.2, len = 40 + glow * 160; g.fillStyle = i % 2 ? '#fff6c0' : '#ffb43a'; for(let j = 0; j < len; j += 4) g.fillRect(Math.round(hx + Math.cos(a) * (24 + j)), Math.round(hy - 12 + Math.sin(a) * (20 + j)), 2 + (j > len * 0.5 ? 1 : 0), 2); }
+                    g.globalAlpha = 0.25 * glow; disc(g, hx, hy - 12, 50 + glow * 40, '#ffd890'); g.globalAlpha = 1; } // light leaking out of him
+                // his arm reaches for you (slowly - he almost has you)
+                const tgt = [L(232, px + 44, k * 0.9), L(150, py + 6, k * 0.9)], rot = Math.atan2(py - tgt[1], px - tgt[0]) - Math.PI / 2, w = wrist(tgt[0], tgt[1], 1.8, rot), w2 = wrist(hx + 74, hy + 64, 1.4, 0);
+                arm(g, hx - 52, hy + 46, w[0], w[1], 15, 30); arm(g, hx + 52, hy + 46, w2[0], w2[1], 14, 20);
+                TOD.art.head(g, hx, hy, u, [-0.9, 0.2], { rage: true, open: 0.4 + wide * 0.8, pupil: 3, crack: 0 }); cracks(g, hx, hy, u, 0.55 + k * 0.45, glow);
+                if(wide > 0) wideEye(g, hx, hy - 6 * u, Math.round(11 * u * (1 + 0.45 * wide)), [-0.9, 0.2], wide);
+                if(glow > 0.3) { g.fillStyle = '#fff6c0'; [[-14, -20], [16, -16], [-20, 4], [22, 8], [-6, 22], [8, -30]].forEach(([a, b]) => g.fillRect(Math.round(hx + a * u * 0.8), Math.round(hy + b), 2, 2 + Math.round(glow * 4))); }
+                hand(g, tgt[0], tgt[1], 1.8, 0, true, rot + Math.sin(f * 0.2) * 0.03 * (1 + glow * 4)); hand(g, hx + 74, hy + 64, 1.4, 0, false, 0);
+            }
+            if(c >= 640) { const t = c - 640;
+                disc(g, bx, by - 12, Math.min(420, 6 + t * 7), '#ffb43a'); disc(g, bx, by - 12, Math.min(420, t * 5.5), '#fff2c8'); disc(g, bx, by - 12, Math.min(420, t * 4), '#ffffff');
+                for(let i = 0; i < 3; i++) ring(g, bx, by - 12, t * (8 + i * 3), 3, ['#ffd13b', '#ff6a1a', '#ffffff'][i]);
+                if(this.bits) this.bits.forEach(b => R(g, b.x, b.y, b.s, b.s, b.c)); }
+            guy(g, px, py, prot, 2, 'walk', f * 2);
+        }
+    };
+})();
+(function() {
+    // the win: a short beat in the fight (he cracks + screams), then the movie. the stats are saved for the very end of the event
+    TODB.holdDeath = function(H) {
+        const T = GAME.tod, b = T.deadBoss, p = GAME.p, t = H.t;
+        if(t === 1) { T.meteors = []; T.atk = null; T.title = 0; TOD.au.roar(); GAME.es.forEach(x => { x.d = true; GAME.deathPop(x); }); GAME.es = []; H.bx0 = b.x; T.hands.forEach(h => { h.busy = true; }); }
+        b.flinch = 2; b.mouth = 1.3; b.crack = Math.min(1, t / 60); b.x = H.bx0 + Math.sin(t * 0.5) * 8; GAME.shake = Math.max(GAME.shake, 6 + t / 12);
+        T.camTo = { x: (p.x + b.x) / 2, y: (p.y + b.y) / 2, z: 1 + t / 220, k: 0.06, kz: 0.05 };
+        if(t % 10 === 0) TOD.au.crack();
+        if(t > 64) H.black = Math.min(1, (t - 64) / 32);
+        if(t === 100) this.end(true);
+    };
+    const DS = TODB.drawScreen; TODB.drawScreen = function(ctx) { DS.call(this, ctx); const T = GAME.tod, H = T && T.hold; if(H && H.kind === 'death' && H.black) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1, H.black)})`; ctx.fillRect(0, 0, C.W, C.H); } };
+    const EN0 = TODB.end; TODB.end = function(won) {
+        if(!won) return EN0.apply(this, arguments);
+        TODB._winStats = this.statsNode(true);
+        GAME.camOv = null; GAME.on = false; GAME.pendingChoice = null; GAME.resetCombo(); GAME.tod = null;
+        document.body.classList.remove('tod-fight'); ui.hideOverlays(); document.getElementById('hud').classList.add('hidden');
+        TOD.setCh(4); TOD.go('finale');
+    };
+    // the very end of the event (after the chest, the reveal and THE END): the stats of your fight
+    const TE = TOD.S.theend.upd; TOD.S.theend.upd = function() { const was = this.ct; TE.call(this); if(was === 479 && TODB._winStats) { const node = TODB._winStats; TODB._winStats = null; TODB.showWin(node); } };
+    TODB.showWin = function(node) {
+        let el = document.getElementById('todb-win'); if(!el) { el = document.createElement('div'); el.id = 'todb-win'; }
+        if(el.parentNode !== document.body) document.body.appendChild(el);
+        el.style.position = 'fixed'; el.style.zIndex = '30005';
+        el.innerHTML = `<div class="tdw-t">HOLLOWEYE DEFEATED</div><div class="tdw-s">YOUR FINAL FIGHT</div><div class="tdo-stats"></div><div class="tdo-b"><button class="btn btn-gold tdw-go">CONTINUE</button></div>`;
+        if(node) el.querySelector('.tdo-stats').appendChild(node);
+        el.classList.remove('hidden'); el.scrollTop = 0; AU.coin && AU.coin();
+        el.querySelector('.tdw-go').onclick = () => { AU.ui(); el.classList.add('hidden'); el.innerHTML = ''; };
+    };
+})();
+/* ---------- DUELS v3.15.8 (user rules): a pause stops the duel for BOTH players - the other one sees YOUR RIVAL PAUSED with
+   the pauser's time left and can only FORFEIT (only the player who paused can resume). 1:00 of pause time per player.
+   Closing the tab / leaving = forfeit: an instant "gone" message on the way out + a heartbeat (12s of silence = gone) ---------- */
+(function() {
+    const isDuel = () => !!(GAME.mp && GAME.mp.mode === 'duels'), ov = () => document.getElementById('overlay-pause');
+    const st = document.createElement('style'); st.textContent = '#mp-pause-left span { display: block; font-size: 8px; color: #aab; margin-top: 8px; }'; document.head.appendChild(st);
+    // while your rival is paused your game reads as paused, whatever else (cards, chests) tries to un-pause it
+    let P = !!GAME.paused; Object.defineProperty(GAME, 'paused', { configurable: true, get: function() { return P || !!(this.mp && this.mp.rp); }, set: function(v) { P = v; } });
+    // the pause screen in "your rival paused" mode: no RESUME, FORFEIT stays
+    MP.rivalPauseShow = function(on) {
+        const o = ov(); if(!o) return;
+        const h = o.querySelector('h2'), rb = o.querySelector('button[onclick="GAME.togglePause()"]');
+        if(h) h.innerText = on ? 'YOUR RIVAL PAUSED' : 'PAUSED';
+        if(rb) rb.classList.toggle('hidden', !!on);
+        if(on) { o.classList.remove('hidden'); this.pauseButtons(); }
+    };
+    MP.rivalPauseTick = function() {
+        const mp = GAME.mp; if(!mp || !mp.rp || mp.me) { clearInterval(this.rpI); return; }
+        const left = Math.max(0, mp.rp.left - (Date.now() - mp.rp.at)), sec = Math.ceil(left / 1000), el = document.getElementById('mp-pause-left');
+        if(el) { el.classList.remove('hidden'); el.innerHTML = `YOUR RIVAL'S PAUSE TIME LEFT<b>${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</b><span>ONLY YOUR RIVAL CAN RESUME</span>`; }
+        if(GAME.on && ov() && ov().classList.contains('hidden')) this.rivalPauseShow(true); // something else closed it: keep it up
+        if(Date.now() - mp.rp.at > mp.rp.left + 8000) { clearInterval(this.rpI); this.rivalPauseEnd(false); this.rivalGone(); } // their time ran out and they never came back
+    };
+    MP.rivalPauseEnd = function(back) {
+        const mp = GAME.mp; clearInterval(this.rpI); if(!mp || !mp.rp) return; mp.rp = null;
+        this.rivalPauseShow(false); const o = ov(); if(o) o.classList.add('hidden');
+        const pl = document.getElementById('mp-pause-left'); if(pl) pl.classList.add('hidden');
+        if(!GAME.on || mp.me) return;
+        GAME.paused = !!GAME.pendingChoice;
+        if(back) { this.toast('YOUR RIVAL IS BACK - GO!', 'success'); AU.play(660, 'square', 0.1, 0.3); if(GAME.p) GAME.dmg('GO!', GAME.p.x, GAME.p.y - 60, '#00ff66', true); }
+        if(document.hidden && !GAME.paused) GAME.togglePause(true); // you left the tab while they were paused: now it's your pause
+    };
+    MP.onRivalPause = function(d) {
+        const mp = GAME.mp; if(!isDuel() || mp.me || !GAME.on) return;
+        if(!d.on) return this.rivalPauseEnd(true);
+        if(mp.pauseAt) { // you both pressed pause at the same moment: the host's pause wins
+            if(this.role === 'host') return;
+            DPST.call(this); const pl = document.getElementById('mp-pause-left'); if(pl) pl.classList.add('hidden');
+        }
+        mp.rp = { left: Math.max(0, d.left || 0), at: Date.now() };
+        this.rivalPauseShow(true);
+        clearInterval(this.rpI); this.rpI = setInterval(() => this.rivalPauseTick(), 250); this.rivalPauseTick();
+    };
+    // your rival is gone (closed the tab, lost the connection, never came back from a pause) = they forfeit
+    MP.rivalGone = function() {
+        const mp = GAME.mp; if(!isDuel() || mp.resolved) return;
+        const r = mp.rival || {};
+        if(r.done && !r.done.left) { if(!mp.me) this.toast('YOUR RIVAL LEFT - THEIR FINAL SCORE STILL COUNTS, KEEP GOING!', 'info'); return; } // they had already finished
+        mp.rival = Object.assign(r, { done: { k: -1, forfeit: true, left: true } }); this.updRival();
+        if(mp.me) this.showDuelResult();
+        else { this.rivalPauseEnd(false); this.toast('YOUR RIVAL LEFT THE DUEL - THEY FORFEIT. YOU WIN!', 'success'); this.duelEnd(true, false); }
+    };
+    const PG = MP.partnerGoneInRound; MP.partnerGoneInRound = function() { if(isDuel()) return this.rivalGone(); return PG.apply(this, arguments); };
+    // pausing: tell your rival (their game stops too), and they can't pause over you
+    const DPS = MP.duelPauseStart; MP.duelPauseStart = function(away) {
+        const mp = GAME.mp; if(!mp) return true;
+        if(mp.rp) return false; // your rival paused - only they can resume
+        if(!mp.started) return false; // starter pick: the duel hasn't started yet
+        const ok = DPS.call(this, away);
+        if(ok) this.send('dpause', { on: true, left: mp.pauseLeft });
+        return ok;
+    };
+    const DPST = MP.duelPauseStop; MP.duelPauseStop = function() { const mp = GAME.mp, was = mp && mp.pauseAt; DPST.call(this); if(was && mp && !mp.me && !this._ending) this.send('dpause', { on: false }); };
+    const TP = GAME.togglePause; GAME.togglePause = function() { if(isDuel() && GAME.mp.rp) return; return TP.apply(this, arguments); };
+    const DE = MP.duelEnd; MP.duelEnd = function() { this._ending = true; clearInterval(this.rpI); try { if(GAME.mp) GAME.mp.rp = null; this.rivalPauseShow(false); return DE.apply(this, arguments); } finally { this._ending = false; } };
+    // heartbeat during a round: 12 seconds without a word from your rival = they're gone
+    MP.hbStart = function() {
+        clearInterval(this.hbI); this.lastHeard = Date.now(); let last = Date.now();
+        this.hbI = setInterval(() => {
+            const mp = GAME.mp, now = Date.now(); if(!mp) { clearInterval(this.hbI); return; }
+            if(now - last > 6000) this.lastHeard = now; // this tab was asleep itself - give them time
+            last = now; this.send('hb', {});
+            if(mp.mode !== 'duels' || mp.resolved || (mp.rival && mp.rival.done)) return;
+            if(now - this.lastHeard > 12000) { clearInterval(this.hbI); this.lost('hb'); }
+        }, 2000);
+    };
+    const BR = MP.beginRound; MP.beginRound = function(cfg) { const r = BR.apply(this, arguments); if(GAME.mp && cfg.mode === 'duels') GAME.mp.pauseLeft = 60000; this.hbStart(); return r; };
+    const OM = MP.onMsg; MP.onMsg = function(t, d) {
+        this.lastHeard = Date.now();
+        if(t === 'hb') return;
+        if(t === 'gone') return this.lost('gone');
+        if(t === 'dpause') return this.onRivalPause(d || {});
+        if(t === 'end' && GAME.mp) GAME.mp.ended = true;
+        return OM.apply(this, arguments);
+    };
+    // the partner is gone (closed the tab / heartbeat): free their seat, then the normal "partner left" path
+    MP.lost = function(why) {
+        if(this._lostAt && Date.now() - this._lostAt < 3000) return; this._lostAt = Date.now();
+        if(this.role === 'host') { const c = NET.conn; NET.conn = null; try { if(c) c.close(); } catch(e) {} NET.relayDrop(); }
+        if(this.partner || this.role === 'guest') this.onLost();
+    };
+    const ON = MP.onMenu; MP.onMenu = function() { clearInterval(this.hbI); clearInterval(this.rpI); this.rivalPauseShow(false); return ON.apply(this, arguments); };
+    // closing the tab / leaving the page: say so on the way out (the heartbeat catches it if this message doesn't make it)
+    window.addEventListener('pagehide', () => { try { if(MP.party && (NET.open || NET.relayOn)) MP.send('gone', {}); } catch(e) {} });
+})();
+/* ---------- v3.15.9: when the street breaks apart EVERY house on the breaking ground blows apart (not only the ones his hands hit),
+   then its rubble falls into the void with the ground. LAST STAND has far fewer monsters (they all end up on your little road) ---------- */
+(function() {
+    // the ground under a house is gone -> it breaks a moment later (spread out a little so a whole ring doesn't pop at once)
+    // (own clock: GAME.frame stands still during his cutscenes, this one doesn't)
+    TODB.fxT = 0;
+    TODB.groundGone = function(h) { if(h.fell || h.brkAt) return; const T = GAME.tod, late = T && T.plat && T.plat.k >= 0.95; h.brkAt = this.fxT + 1 + Math.floor(Math.random() * (late ? 40 : 8)); };
+    // the chunk a house stands on (a house right at the road's edge uses the first ring of chunks)
+    TODB.chunkNear = function(h) { const T = GAME.tod, P = T.plat; const c = this.chunkAt(h.x, h.y); if(c) return c;
+        const dx = h.x - P.x, dy = (h.y - P.y) / 0.92, r = Math.hypot(dx, dy); if(r >= 300) return null; const a = Math.atan2(dy, dx); return this.chunkAt(P.x + Math.cos(a) * 310, P.y + Math.sin(a) * 310 * 0.92); };
+    const UF = TODST.updFx; TODST.updFx = function() {
+        UF.apply(this, arguments); const T = GAME.tod; if(!T || !T.houses) return; const f = ++TODB.fxT, p = GAME.p, P = T.plat;
+        T.houses.forEach(h => { if(!h.brkAt || h.fell || f < h.brkAt) return;
+            const near = p && Math.hypot(h.x - p.x, h.y - p.y) < 1500;
+            if(!h.dead) { h.dead = true; h.crushT = 1;
+                if(near) { T.deb.forEach(d => d._old = 1); TODST.burst(h, h.x, h.y - 10); T.deb.forEach(d => { if(!d._old) { d._old = 1; d.sink = f + 30 + Math.floor(Math.random() * 20); } });
+                    GAME.spawnShockwave(h.x, h.y - 30, '#8a6a4a', h.w * 0.7, 16, 4); GAME.shake = Math.max(GAME.shake, 8);
+                    if(f - (TODB._crashF || -99) > 7) { TODB._crashF = f; TOD.au.crash(); TOD.au.thud(); } } }
+            h.fell = 1; h.brk = true; h.wasDead = false; h.fellF = f + 22; }); // its rubble drops with the ground after the blast
+        // bits of a broken house that land where the ground is gone drop into the void too
+        if(P && T.deb.length) T.deb.forEach(d => { if(!d.sink || f < d.sink) return; if(d.sinkK == null) { const inP = Math.hypot((d.x - P.x) / (P.r * 0.86), (d.y - P.y) / (P.r * 0.78)) < 1; if(inP) { d.sink = 0; return; } d.sinkK = 0; d.life = Math.min(d.life, 80); }
+            d.sinkK++; d.y += 0.4 + d.sinkK * 0.18; if(d.s) d.s = Math.max(0.2, d.s * 0.985); d.w = d.w && Math.max(1, d.w * 0.985); });
+    };
+    const DH = TODB.drawHouse; TODB.drawHouse = function(ctx, h, cx, cy) {
+        if(!h.brk) return DH.call(this, ctx, h, cx, cy);
+        if(TODB.fxT < h.fellF) return TODST.drawHouse(ctx, h, cx, cy); // still blowing apart where it stood
+        const k = Math.min(1, (TODB.fxT - h.fellF) / 80); if(k >= 1) return;
+        const x = Math.round(h.x - cx), y = Math.round(h.y - cy), img = TODST.rubble(h);
+        ctx.save(); ctx.translate(x, y + k * k * 220); ctx.rotate((h.seed % 2 ? 1 : -1) * k * 0.4); const s = 1 - k * 0.7; ctx.scale(s, s); ctx.globalAlpha = 1 - k; ctx.drawImage(img, -h.w / 2 - 14, -h.wh - h.d - 18); ctx.restore();
+    };
+    // ---- LAST STAND: your road is tiny, so only a few monsters at a time ----
+    TODB.LAST_MAX = 14; TODB.LAST_RATE = 34;
+    TODB.noMore = function() { const T = GAME.tod; if(!T || T.phase < 4) return false; let n = 0; for(const e of GAME.es) if(!e.boss && !e.todNode && !e.d) n++; return n >= this.LAST_MAX; };
+    TODB.spawnTune = function(rate) { const T = GAME.tod; return T && T.phase >= 4 ? Math.max(rate, this.LAST_RATE) : rate; };
+})();
+/* ---------- v3.15.10: THE END OF HOLLOWEYE, slower and clearer (user: the hit didn't read, it was messy + too fast, and the
+   floating platform came out of nowhere). PART 1 plays in the fight itself: he cracks and screams -> his hand rises slowly,
+   his eye locks on you, a shadow + "!" -> SWAT -> the world stops on the hit -> you fly off the road, spinning, down into the
+   red void while he reaches after you -> fade. PART 2 (story screen, slow motion): you drift in the void, his hand reaches
+   for you... his eye goes WIDE, the cracks light up... his fingers almost touch you... he explodes -> white ---------- */
+(function() {
+    const U = 4.2, E = (k) => TOD.ease(Math.max(0, Math.min(1, k)));
+    const handCv = (pose, flip, rage) => { const k = U + '|' + pose + '|' + (flip ? 1 : 0) + '|' + (rage ? 1 : 0); if(!TOD.art._hc || !TOD.art._hc[k]) TOD.art.hand(TODB._sg || (TODB._sg = document.createElement('canvas').getContext('2d')), -999, -999, U, pose, flip, rage); return TOD.art._hc[k]; };
+    const CRK = [[-13, -2, -18, -8, -24, -4], [13, -4, 17, -12, 22, -9], [-10, 9, -14, 14, -12, 22], [11, 8, 15, 14, 21, 12], [-3, -13, -5, -20, -1, -26], [3, 13, 6, 18, 2, 24], [-15, 4, -20, 10, -26, 8], [15, 2, 21, -2, 26, 3]];
+    const AG = 130, WU = 220, HIT = 236, FREE = 252, FLY = 412, FADE0 = 440, END = 480; // frames
+    TODB.holdDeath = function(H) {
+        const T = GAME.tod, b = T.deadBoss, p = GAME.p, t = H.t;
+        if(t === 1) {
+            T.meteors = []; T.atk = null; T.title = 0; T.thrown = []; GAME.enemyProjs = [];
+            GAME.es.forEach(x => { x.d = true; GAME.deathPop(x); }); GAME.es = [];
+            H.s = 1; H.hi = 1; // his right hand swats you to the left
+            const h = T.hands[H.hi]; T.hands.forEach(x => { x.busy = true; x.vis = 1; x.pose = 0; }); h.grab = true;
+            H.bx0 = b.x; H.hx = b.x + 170; H.hy = b.y + 70; H.ang = 0;
+            const cx0 = h.x, cy0 = h.y - h.h - 40; if(isFinite(cx0) && isFinite(cy0) && Math.hypot(cx0 - p.x, cy0 - p.y) < 650) { H.hx = cx0; H.hy = cy0; }
+            H.h0 = { x: H.hx, y: H.hy }; const o = T.hands[1 - H.hi]; H.o0 = { x: o.x, y: o.y, h: o.h };
+            T.hidePl = false; H.ft = []; TOD.au.roar(); document.body.classList.add('cine'); // movie mode: no HUD
+        }
+        const s = H.s, h = T.hands[H.hi], o = T.hands[1 - H.hi];
+        // 1) he cracks and screams (his hands thrash beside him)
+        if(t < AG) { b.flinch = 2; b.mouth = 1.2 + Math.sin(t * 0.3) * 0.2; b.crack = 0; H.ck = Math.min(1, t / 110); b.x = H.bx0 + Math.sin(t * 0.6) * (3 + t / 25); GAME.shake = Math.max(GAME.shake, 3 + t / 30);
+            if(t % 14 === 0) TOD.au.crack(); if(t === 64) TOD.au.roar();
+            T.camTo = { x: (p.x + b.x) / 2, y: (p.y + b.y) / 2, z: 1.1 + t / 650, k: 0.05, kz: 0.04 };
+            H.hx = H.h0.x + Math.sin(t * 0.5) * 7; H.hy = H.h0.y + Math.cos(t * 0.4) * 6;
+            const ok = E(t / 40); o.x = H.o0.x + (p.x - s * 250 - H.o0.x) * ok + Math.sin(t * 0.45) * 6; o.y = H.o0.y + (p.y - 30 - H.o0.y) * ok; /* out to the side, never over you */ o.h = H.o0.h + (130 - H.o0.h) * ok; }
+        // 2) the wind-up: his hand rises high beside you, slowly... his eye locks on you
+        if(t >= AG && t < WU) { const k = E((t - AG) / (WU - AG - 25)), pull = E((t - (WU - 28)) / 28);
+            b.flinch = 0; b.mouth = 0.5; b.x += (H.bx0 - b.x) * 0.1; b.look = [Math.max(-1, Math.min(1, (p.x - b.x) / 250)), 0.3]; b.blink = 0;
+            const wx = p.x + s * 250 + s * 80 * pull, wy = p.y - 150 - 60 * pull;
+            H.hx = H.h0.x + (wx - H.h0.x) * k + Math.sin(t * 0.9) * 1.5; H.hy = H.h0.y + (wy - H.h0.y) * k; H.ang = s * (0.3 + 0.45 * pull);
+            if(t === AG) TOD.au.rumble(2); if(t === AG + 25 || t === AG + 55 || t === AG + 75) TOD.au.heart();
+            T.camTo = { x: p.x + s * 110, y: p.y - 70, z: 1.25 + 0.25 * k, k: 0.05, kz: 0.04 }; H.warn = k; }
+        // 3) SWAT
+        if(t >= WU && t < HIT) { const k = (t - WU) / (HIT - WU), kk = k * k;
+            if(t === WU) { H.sx = H.hx; H.sy = H.hy; H.sa = H.ang; H.trail = []; TOD.au.whoosh(); TOD.au.tone(170, 'sawtooth', 0.4, 0.14, 50); }
+            const ex = p.x + s * 30, ey = p.y - 6 * U; // his palm right against you
+            H.hx = H.sx + (ex - H.sx) * kk; H.hy = H.sy + (ey - H.sy) * kk - Math.sin(k * Math.PI) * 50; H.ang = H.sa + (-s * 0.2 - H.sa) * kk;
+            H.trail.push({ x: H.hx, y: H.hy, a: H.ang }); if(H.trail.length > 5) H.trail.shift();
+            T.camTo = { x: p.x + s * 70, y: p.y - 50, z: 1.5, k: 0.18, kz: 0.1 }; H.warn = 1; }
+        // 4) IMPACT: the world stops for a moment
+        if(t === HIT) { H.trail = []; T.hidePl = true; H.flash = 1; H.warn = 0; GAME.shake = 26; TOD.au.thud(); TOD.au.crash(); TOD.au.scare();
+            GAME.spawnShockwave(p.x, p.y - 10, '#ffffff', 220, 16, 6); GAME.spawnShockwave(p.x, p.y - 10, '#ff6a1a', 150, 14, 4);
+            T.camTo = { x: p.x + s * 30, y: p.y - 30, z: 2.05, k: 0.5, kz: 0.5 }; }
+        if(t > HIT && t < FREE) H.flash = Math.max(0, H.flash - 0.08);
+        // 5) you fly away, spinning, off the road and down into the red void (his hand follows through)
+        if(t >= FREE) { const k = Math.min(1, (t - FREE) / (FLY - FREE)), e = 1 - Math.pow(1 - k, 2.2);
+            if(t === FREE) { TOD.au.whoosh(); for(let i = 0; i < 26; i++) { const a = Math.random() * 6.283; GAME.particles.push({ x: p.x, y: p.y, vx: Math.cos(a) * 6 - s * 4, vy: Math.sin(a) * 4, g: 0.1, life: 32, c: i % 3 ? '#ffffff' : '#ffd13b', sz: 4 }); } }
+            H.fx = p.x - s * 900 * e; H.fy = p.y + 260 * e * e - Math.sin(Math.min(1, k * 1.7) * Math.PI) * 70; H.frot = -s * (t - FREE) * (0.4 - 0.3 * k); H.fs = 1 - 0.85 * E((k - 0.3) / 0.7);
+            H.ft.push({ x: H.fx, y: H.fy, r: H.frot, s: H.fs }); if(H.ft.length > 4) H.ft.shift();
+            const fw = E((t - FREE) / 26); H.hx = p.x + s * 30 - s * 200 * fw; H.hy = p.y - 6 * U + 40 * fw; H.ang = -s * 0.2 - s * 0.35 * fw;
+            T.camTo = { x: H.fx * 0.65 + p.x * 0.35, y: H.fy * 0.65 + p.y * 0.35 - 30, z: 1.6 - 0.75 * E(k / 0.8), k: 0.12, kz: 0.05 }; // the camera flies with you, pulling back
+            if(t % 18 === 0 && k < 0.6) TOD.au.whoosh();
+            b.look = [-s, 0.5]; b.mouth = 0.8;
+            if(t >= FLY - 60) { const r = E((t - (FLY - 60)) / 70); o.x = o.x + (p.x - s * 430 - o.x) * 0.05 * (0.4 + r); o.y = o.y + (p.y + 90 - o.y) * 0.05; o.h = o.h + (60 - o.h) * 0.05; if(t === FLY - 60) TOD.au.roar(); } } // he reaches after you
+        if(t >= FADE0) H.black = Math.min(1, (t - FADE0) / 36);
+        // the swat hand's arm reaches its wrist (drawArms uses h.x / h.y)
+        const a = H.ang || 0; h.x = H.hx + 17 * U * Math.sin(a); h.y = H.hy - 17 * U * Math.cos(a) + 40 + 15 * U; h.h = 0;
+        if(t === END) this.end(true);
+    };
+    // white copy of your sprite for the hit frame
+    const whiteSpr = (img) => { const c = TODB._wt || (TODB._wt = document.createElement('canvas')); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0); g.globalCompositeOperation = 'source-atop'; g.fillStyle = '#ffffff'; g.fillRect(0, 0, c.width, c.height); g.globalCompositeOperation = 'source-over'; return c; };
+    const DW = TODB.drawWorld; TODB.drawWorld = function(ctx, cx, cy) {
+        const r = DW.call(this, ctx, cx, cy); const T = GAME.tod, H = T && T.hold; if(!H || H.kind !== 'death' || H.hx == null) return r;
+        const p = GAME.p, t = H.t, s = H.s, c = handCv(0, H.hi === 0, T.phase >= 3); if(!c) return r;
+        const put = (x, y, a, al) => { ctx.save(); if(al != null) ctx.globalAlpha = al; ctx.translate(Math.round(x - cx), Math.round(y - cy)); ctx.rotate(a); ctx.drawImage(c, Math.round(-c.width / 2), Math.round(-22 * U)); ctx.restore(); };
+        const px = Math.round(p.x - cx), py = Math.round(p.y - cy);
+        // the warning: his hand's shadow grows over you + "!"
+        if(H.warn > 0 && t < HIT) { ctx.save(); ctx.globalAlpha = 0.18 + 0.32 * H.warn; ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(px + s * 20 * (1 - H.warn), py + 16, 30 + 50 * H.warn, 12 + 18 * H.warn, 0, 0, 6.283); ctx.fill(); ctx.restore();
+            if(t > WU - 40) { const bl = Math.floor(t / 5) % 2 ? '#ffd13b' : '#ff4a1a'; ctx.fillStyle = '#000'; ctx.fillRect(px - 5, py - 62, 10, 22); ctx.fillRect(px - 5, py - 36, 10, 10); ctx.fillStyle = bl; ctx.fillRect(px - 3, py - 60, 6, 18); ctx.fillRect(px - 3, py - 34, 6, 6); } }
+        const b = T.deadBoss; if(b && !b.gone && H.ck > 0) { const bx = Math.round(b.x - cx), by = Math.round(b.y - cy), u = 3.2, sz = 3, col = t > 60 && Math.floor(t / 4) % 2 ? '#ffd13b' : (t > 60 ? '#ff6a1a' : '#0a0204');
+            CRK.slice(0, Math.ceil(H.ck * CRK.length)).forEach(q => { for(let k = 0; k < 2; k++) { const ax = q[k * 2], ay = q[k * 2 + 1], ex = q[k * 2 + 2], ey = q[k * 2 + 3], n = Math.ceil(Math.hypot(ex - ax, ey - ay)); for(let i = 0; i <= n; i++) { const m = i / n; ctx.fillStyle = col; ctx.fillRect(bx + Math.round((ax + (ex - ax) * m) * u) - 1, by + Math.round((ay + (ey - ay) * m - 6) * u) - 1, sz, sz); } } }); }
+        if(H.trail) H.trail.forEach((q, i) => put(q.x, q.y, q.a, 0.1 + i * 0.07)); // motion blur
+        put(H.hx, H.hy, H.ang || 0);
+        if(!T.hidePl || !p.s) return r;
+        const sz = 56;
+        if(t < FREE) { // the hit: squashed against his palm, flashing white, impact burst
+            const sq = 1 - (t - HIT) / (FREE - HIT); ctx.save(); ctx.translate(px - s * 4, py); ctx.scale(1 + 0.35 * sq, 1 - 0.3 * sq); ctx.drawImage(t - HIT < 3 ? whiteSpr(p.s) : p.s, -sz / 2, -sz / 2, sz, sz); ctx.restore();
+            const ix = px + s * 18, iy = py - 8, L = 40 + 30 * sq; ctx.fillStyle = (t % 4 < 2) ? '#ffffff' : '#ffd13b';
+            for(let i = 0; i < 12; i++) { const a = i * 0.5236 + 0.26; for(let j = 14; j < L; j += 5) ctx.fillRect(Math.round(ix + Math.cos(a) * j) - 2, Math.round(iy + Math.sin(a) * j * 0.8) - 2, j < L * 0.6 ? 5 : 3, j < L * 0.6 ? 5 : 3); }
+        } else { // flying away
+            H.ft.forEach((q, i) => { ctx.save(); ctx.globalAlpha = 0.12 + i * 0.06; ctx.translate(Math.round(q.x - cx), Math.round(q.y - cy)); ctx.rotate(q.r); ctx.drawImage(p.s, -sz * q.s / 2, -sz * q.s / 2, sz * q.s, sz * q.s); ctx.restore(); });
+            ctx.save(); ctx.translate(Math.round(H.fx - cx), Math.round(H.fy - cy)); ctx.rotate(H.frot); ctx.drawImage(p.s, -sz * H.fs / 2, -sz * H.fs / 2, sz * H.fs, sz * H.fs); ctx.restore();
+            if(t < FREE + 50) { ctx.save(); ctx.globalAlpha = 0.35; ctx.fillStyle = '#ffffff'; for(let i = 0; i < 6; i++) { const lx = H.fx - cx + s * (30 + i * 16), ly = H.fy - cy - 20 + (i % 3) * 14; ctx.fillRect(Math.round(lx), Math.round(ly), 26, 2); } ctx.restore(); } // speed lines
+        }
+        return r;
+    };
+    const EN = TODB.end; TODB.end = function() { document.body.classList.remove('cine'); return EN.apply(this, arguments); };
+    // the flash on the hit
+    const DS = TODB.drawScreen; TODB.drawScreen = function(ctx) { DS.call(this, ctx); const T = GAME.tod, H = T && T.hold; if(H && H.kind === 'death' && H.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${Math.min(0.5, H.flash * 0.5)})`; ctx.fillRect(0, 0, C.W, C.H); } };
+})();
+/* ---------- PART 2: him trying to grab you (story screen, side view, pixel art, slow motion, about 14 seconds) ---------- */
+(function() {
+    const R = (g, x, y, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h)); };
+    const disc = (g, x, y, r, c) => { g.fillStyle = c; x = Math.round(x); y = Math.round(y); r = Math.max(1, Math.round(r)); for(let dy = -r; dy <= r; dy++) { const w = Math.round(Math.sqrt(r * r - dy * dy)); if(w > 0) g.fillRect(x - w, y + dy, w * 2, 1); } };
+    const ring = (g, x, y, r, sz, c) => { g.fillStyle = c; const n = Math.max(14, Math.round(r * 0.8)); for(let i = 0; i < n; i++) { const a = i / n * 6.283; g.fillRect(Math.round(x + Math.cos(a) * r - sz / 2), Math.round(y + Math.sin(a) * r * 0.85 - sz / 2), sz, sz); } };
+    const E = (k) => TOD.ease(Math.max(0, Math.min(1, k))), L = (a, b, k) => a + (b - a) * k;
+    const guyCv = (pose, walkT) => { const c = TOD._fg || (TOD._fg = document.createElement('canvas')); c.width = 40; c.height = 40; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; TOD.drawGuy(g, 20, 34, 1, walkT, pose, { scared: true }); return c; };
+    const guy = (g, x, y, rot, sc, a) => { const c = guyCv('walk', 0); g.save(); if(a != null) g.globalAlpha = a; g.translate(Math.round(x), Math.round(y)); g.rotate(rot); g.drawImage(c, -20 * sc, -21 * sc, 40 * sc, 40 * sc); g.restore(); };
+    const hand = (g, x, y, u, pose, flip, rot) => { TOD.art.hand(TOD._fh || (TOD._fh = document.createElement('canvas').getContext('2d')), -999, -999, u, pose, flip, true); const c = TOD.art._hc[u + '|' + pose + '|' + (flip ? 1 : 0) + '|1']; g.save(); g.translate(Math.round(x), Math.round(y)); g.rotate(rot || 0); g.drawImage(c, Math.round(-c.width / 2), Math.round(-22 * u)); g.restore(); };
+    const arm = (g, sx, sy, hx, hy, w, sag) => { const mx = (sx + hx) / 2, my = Math.max(sy, hy) + sag;
+        [[2, '#0a0608', 0], [0, '#5a3a30', 0], [-w * 0.45, '#7a5a4a', -w * 0.18]].forEach(([dw, col, off]) => { for(let i = 0; i <= 20; i++) { const t = i / 20, q = 1 - t, x = q * q * sx + 2 * q * t * mx + t * t * hx, y = q * q * sy + 2 * q * t * my + t * t * hy; disc(g, x + off, y + off, (w * (1 - t * 0.35)) / 2 + dw, col); } });
+        for(let i = 0; i <= 6; i++) { const t = i / 6 * 0.3, q = 1 - t, x = q * q * sx + 2 * q * t * mx + t * t * hx, y = q * q * sy + 2 * q * t * my + t * t * hy; disc(g, x, y, w * 0.72, '#1e1026'); } };
+    const wrist = (x, y, u, rot) => [x + 17 * u * Math.sin(rot || 0), y - 17 * u * Math.cos(rot || 0)];
+    const smoke = (g, x, y, u, f) => { for(let i = 0; i < 7; i++) disc(g, x + Math.sin(i * 1.7 + f * 0.03) * 10 * u, y + 26 * u + i * 9 * u, (16 + i * 3) * u, i % 2 ? '#1a0610' : '#24081a'); };
+    const wideEye = (g, x, y, r, look, k) => { disc(g, x, y, r + 3, '#120814'); disc(g, x, y, r, '#f2ead8');
+        g.fillStyle = '#d8343a'; for(let i = 0; i < 12; i++) { const a = i * 0.524 + 0.2; for(let j = 0; j < 6; j++) { const rr = r * (0.96 - j * 0.08); g.fillRect(Math.round(x + Math.cos(a + j * 0.05) * rr), Math.round(y + Math.sin(a + j * 0.05) * rr), 1, 1); } }
+        const ix = x + look[0] * r * 0.3 + (Math.random() - 0.5) * k * 2, iy = y + look[1] * r * 0.2 + (Math.random() - 0.5) * k * 2, ir = r * (0.45 - 0.2 * k);
+        disc(g, ix, iy, ir, '#ff2a1a'); disc(g, ix, iy, ir * 0.7, '#9a0a0a'); disc(g, ix, iy, Math.max(1, ir * (0.45 - 0.37 * k)), '#000'); R(g, ix + ir * 0.3, iy - ir * 0.5, Math.max(2, r / 14), Math.max(2, r / 14), '#fff'); };
+    const eyeWide = (g, x, y, u, look, k) => { const P = (a, b, w, h, c) => { g.fillStyle = c; g.fillRect(Math.round(x + a * u), Math.round(y + b * u), Math.ceil(w * u), Math.ceil(h * u)); };
+        const er = 11 * (1 + 0.22 * k), sh = (Math.random() - 0.5) * k * 0.8;
+        P(-er - 2, -er - 1, er * 2 + 4, er * 2 + 2, '#120814'); P(-er, -er + 1, er * 2, er * 2 - 2, '#f2ead8'); P(-er + 2, -er, er * 2 - 4, er * 2, '#f2ead8');
+        [[-10, -2, 4], [-9, 3, 3], [7, -3, 3], [8, 2, 3], [-6, -6, 2], [5, 5, 2], [-8, 6, 3], [6, -7, 3], [-2, -9, 2], [1, 8, 2]].slice(0, 4 + Math.round(k * 6)).forEach(([a, b, l]) => { const d = Math.sign(a) || 1; for(let i = 0; i < l + k * 2; i++) P(a * (1 + 0.2 * k) + d * i * 0.8, b * (1 + 0.2 * k) + (i % 2), 1, 1, '#d8343a'); });
+        const ix = look[0] * 4 + sh, iy = look[1] * 2.5 + sh, z = 12 * (1 - 0.42 * k);
+        P(ix - z / 2, iy - z / 2, z, z, '#ff2a1a'); P(ix - z / 2 - 1, iy - z / 3, z + 2, z * 2 / 3, '#ff2a1a'); P(ix - z * 0.4, iy - z * 0.4, z * 0.8, z * 0.8, '#c40a0a');
+        const pr = 3 * (1 - 0.75 * k) + 0.5; P(ix - pr * 0.5, iy - pr, pr, pr * 2, '#000'); P(ix - pr, iy - pr * 0.5, pr * 2, pr, '#000');
+        P(ix + z * 0.2, iy - z * 0.4, 1.5, 1.5, '#fff'); P(ix - z * 0.3, iy + z * 0.2, 1, 1, '#ffd9b0'); };
+    const CR = [[-13, -2, -18, -8, -24, -4], [13, -4, 17, -12, 22, -9], [-10, 9, -14, 14, -12, 22], [11, 8, 15, 14, 21, 12], [-3, -13, -5, -20, -1, -26], [3, 13, 6, 18, 2, 24], [-15, 4, -20, 10, -26, 8], [15, 2, 21, -2, 26, 3]];
+    const cracks = (g, x, y, u, k, glow) => { const col = glow > 0.3 ? (Math.floor(TOD.t / 3) % 2 ? '#fff6c0' : '#ffd13b') : '#0a0204', sz = Math.max(1, Math.round(u * 0.7));
+        CR.slice(0, Math.ceil(Math.min(1, k) * CR.length)).forEach(p => { for(let s = 0; s < 2; s++) { const ax = p[s * 2], ay = p[s * 2 + 1], bx = p[s * 2 + 2], by = p[s * 2 + 3], n = Math.ceil(Math.hypot(bx - ax, by - ay)); for(let i = 0; i <= n; i++) { const t = i / n; g.fillStyle = col; g.fillRect(Math.round(x + (ax + (bx - ax) * t) * u), Math.round(y + (ay + (by - ay) * t - 6) * u), sz, sz); } } }); };
+    const bg = (g, W, H, f) => { const cols = ['#120208', '#1e040c', '#2c0610', '#3c0a14', '#4a0e16', '#3c0a14', '#2c0610', '#1e040c']; for(let i = 0; i < 8; i++) R(g, 0, i * 27, W, 27, cols[i]); };
+    const S1 = 300, S2 = 480, S3 = 670, S4 = 850, OUT = 900; // shot changes (frames)
+    TOD.S.finale = {
+        init: function() { this.ct = 0; this.ft = 0; TOD.fadeA = 1; TOD.fadeTarget = 0; TOD.fadeSpd = 0.012; TOD.setTask(''); TOD.candy = -1; TOD.au.droneSet(0.1);
+            this.rocks = []; for(let i = 0; i < 40; i++) this.rocks.push({ x: Math.random() * 420 - 20, y: Math.random() * 216, s: 2 + Math.floor(Math.random() * 6), v: 0.05 + Math.random() * 0.2, z: Math.random() < 0.3 });
+            this.flakes = []; this.bits = null; this.white = 0; },
+        upd: function() {
+            const c = ++this.ct, T = TOD; this.ft += c >= S3 + 10 && c < S4 + 30 ? 0.5 : 0.35; // slow motion the whole time
+            if(c === 30) T.au.tone(55, 'sine', 4, 0.12, 40);
+            if(c === 60 || c === 170 || c === 270) T.au.heart();
+            if(c === 110) T.say('"...STAY..."', 170, '#ff6a6a');
+            if(c === S1) { T.au.heart(); T.shake = 2; } if(c === S1 + 70) { T.au.tone(2600, 'sine', 1.6, 0.07, 4400); T.shake = 3; } if(c === S1 + 110 || c === S1 + 140) T.au.crack();
+            if(c === S2) T.au.rumble(3); if(c > S2 && c < S3 && c % 18 === 0) { T.au.crack(); T.shake = Math.max(T.shake, 1 + (c - S2) / 60); } if(c === S2 + 60 || c === S2 + 110 || c === S2 + 145) T.au.heart();
+            if(c === S3) { T.au.shatter(); T.au.roar(); T.au.rumble(3); T.shake = 16; T.flash = 1.1; T.flashCol = '#fff6d0';
+                this.bits = []; const cols = ['#2a0812', '#3a0c1a', '#5a1424', '#ff5a2a', '#ffd13b', '#f2ead8', '#2e1e16'];
+                for(let i = 0; i < 80; i++) { const a = Math.random() * 6.283, sp = 0.8 + Math.random() * 3.5; this.bits.push({ x: 286, y: 84, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.5, s: 2 + Math.floor(Math.random() * 7), c: cols[i % cols.length] }); } }
+            if(this.bits) this.bits.forEach(b => { b.x += b.vx * 0.55; b.y += b.vy * 0.55; b.vy += 0.012; });
+            // the tips of his fingers flake away into light as he cracks
+            if(c > S2 + 40 && c < S3 && c % 3 === 0) this.flakes.push({ x: 0, y: 0, vx: -0.2 - Math.random() * 0.5, vy: -0.3 - Math.random() * 0.4, life: 70, c: Math.random() < 0.5 ? '#fff6c0' : '#ffb43a' });
+            this.flakes.forEach(f => { f.x += f.vx; f.y += f.vy; f.life--; }); this.flakes = this.flakes.filter(f => f.life > 0);
+            if(c > S4 - 70) this.white = Math.min(1, (c - (S4 - 70)) / 60);
+            this.rocks.forEach(r => { r.y -= r.v; r.x += 0.05; if(r.y < -10) { r.y = 226; r.x = Math.random() * 420 - 20; } });
+            if(c === OUT) T.go('ending');
+        },
+        draw: function(g) {
+            const W = TOD.W, H = TOD.H, c = this.ct, f = this.ft; g.imageSmoothingEnabled = false;
+            bg(g, W, H, f);
+            this.rocks.forEach(r => { R(g, r.x, r.y, r.s, Math.max(1, r.s - 1), r.z ? '#2a1014' : '#1a080c'); R(g, r.x, r.y, r.s, 1, '#4a2026'); });
+            if(c < S1) this.reach(g, c, f, E(c / S1) * 0.78, 0, 0);
+            else if(c < S2) this.eye(g, c, f);
+            else this.reach(g, c, f, L(0.78, 0.95, E((c - S2) / (S3 - S2))), 1, Math.min(1, (c - S2) / 120));
+            g.fillStyle = 'rgba(110,150,255,0.06)'; g.fillRect(0, 0, W, H); // slow motion tint
+            if(this.white > 0) { g.globalAlpha = this.white; R(g, 0, 0, W, H, '#ffffff'); g.globalAlpha = 1; }
+            R(g, 0, 0, W, 16, '#000'); R(g, 0, H - 16, W, 16, '#000'); // movie bars
+        },
+        // you drift in the void (no ground anywhere), he reaches for you - k = how close his hand is, wide = eye open wide, glow = light from his cracks
+        reach: function(g, c, f, k, wide, glow) {
+            const bx = 290, by = 86, u = 2, boom = c >= S3, bt = c - S3;
+            const px = 104 - (boom ? bt * 0.35 : 0) + Math.sin(f * 0.02) * 3, py = 104 + Math.sin(f * 0.03) * 4, prot = 2.4 + f * 0.01 + (boom ? bt * 0.01 : 0);
+            if(!boom || bt < 4) {
+                const shk = Math.round(glow * 2.5 * (Math.random() - 0.5)), hx = bx + shk, hy = by;
+                smoke(g, hx, hy, u, f);
+                if(glow > 0) { for(let i = 0; i < 14; i++) { const a = i * 0.449 + 0.2, len = 30 + glow * 170; g.fillStyle = i % 2 ? '#fff6c0' : '#ffb43a'; for(let j = 0; j < len; j += 4) g.fillRect(Math.round(hx + Math.cos(a) * (26 + j)), Math.round(hy - 12 + Math.sin(a) * (22 + j)), j > len * 0.5 ? 3 : 2, 2); }
+                    g.globalAlpha = 0.22 * glow; disc(g, hx, hy - 12, 46 + glow * 40, '#ffd890'); g.globalAlpha = 1; }
+                // his left arm reaches for you, slowly; the other hand hangs back
+                const tx = L(250, px + 40, k), ty = L(150, py + 4, k), rot = Math.atan2(py - ty, px - tx) - Math.PI / 2 + Math.sin(f * 0.15) * 0.02 * (1 + glow * 5), w = wrist(tx, ty, 1.8, rot), w2 = wrist(hx + 76, hy + 66, 1.4, 0);
+                arm(g, hx - 52, hy + 46, w[0], w[1], 15, 34); arm(g, hx + 52, hy + 46, w2[0], w2[1], 14, 20);
+                TOD.art.head(g, hx, hy, u, [-0.9, 0.2], { rage: true, open: 0.35 + wide * 0.7, pupil: 3, crack: 0 });
+                if(wide > 0) eyeWide(g, hx, hy - 6 * u, u, [-0.9, 0.2], wide);
+                cracks(g, hx, hy, u, 0.4 + glow * 0.6 + (wide ? 0.2 : 0), glow);
+                hand(g, tx, ty, 1.8, 0, true, rot); hand(g, hx + 76, hy + 66, 1.4, 0, false, 0);
+                this.flakes.forEach(fl => R(g, tx - 30 + fl.x, ty + 10 + fl.y, 2, 2, fl.c)); // his fingertips flaking into light
+            }
+            if(boom) { // HE EXPLODES
+                disc(g, bx, by - 12, Math.min(430, 6 + bt * 4.5), '#ffb43a'); disc(g, bx, by - 12, Math.min(430, bt * 3.6), '#fff2c8'); disc(g, bx, by - 12, Math.min(430, bt * 2.6), '#ffffff');
+                for(let i = 0; i < 3; i++) ring(g, bx, by - 12, bt * (5 + i * 2.2), 3, ['#ffd13b', '#ff6a1a', '#ffffff'][i]);
+                if(this.bits) this.bits.forEach(b => R(g, b.x, b.y, b.s, b.s, b.c)); }
+            guy(g, px, py, prot, 2);
+        },
+        // his eye up close: it finds you... then goes WIDE, the cracks spread out from it and light up
+        eye: function(g, c, f) {
+            const k = c - S1, u = 6, sh = k > 60 ? Math.round((Math.random() - 0.5) * (1 + k / 60)) : 0, ex = 192 + sh, ey = 100;
+            const look = [L(0.2, -0.8, E(k / 50)), L(-0.1, 0.3, E(k / 50))], wide = E((k - 70) / 40), glow = k > 130 ? Math.min(1, (k - 130) / 40) : 0;
+            TOD.art.head(g, ex, ey + 6 * u, u, look, { rage: true, open: 0.2 + wide * 0.4, pupil: 3, crack: 0 });
+            if(wide > 0) eyeWide(g, ex, ey, u, look, wide);
+            if(k > 30) { const ix = ex + look[0] * 4 * u + 8, iy = ey + look[1] * 2.5 * u - 4; R(g, ix, iy, 2, 2, '#f0e6d8'); R(g, ix, iy + 2, 2, 3, '#ffb070'); } // you, tiny, in his eye
+            if(k > 100) cracks(g, ex, ey + 6 * u, u, (k - 100) / 60, glow);
+        }
+    };
+})();
+/* ---------- v3.15.11: HOLLOWEYE is a bit easier, his EYE LASER can be dodged (it aims at you, LOCKS, then sweeps AWAY to
+   one side - the red zone + arrow show which side, so step to the other side), your weapons vanish before his last hit
+   and you're always drawn on top while he winds up ---------- */
+(function() {
+    const E = (k) => TOD.ease(Math.max(0, Math.min(1, k)));
+    // ---- a bit easier: less HP, softer hits, a little more time between attacks ----
+    const BH = TODB.bossHP; TODB.bossHP = function() { return Math.round(BH.apply(this, arguments) * 0.8); };
+    TODB.dmgOf = function(k) { const p = GAME.p, ph = GAME.tod ? GAME.tod.phase : 1; return p.mhp * k * 0.8 + (ph - 1) * 2; };
+    const NA = TODB.nextAtk; TODB.nextAtk = function() { NA.apply(this, arguments); const T = GAME.tod; if(T && T.atkCd) T.atkCd = Math.round(T.atkCd * 1.12); if(T && T.atk && T.atk.type === 'beam') { T.atk.charge = 78; T.atk.sweep = 96; } };
+    // ---- THE EYE LASER ----
+    const ARC = 1.15, LOCK = 36;
+    const UA = TODB.updAtk; TODB.updAtk = function(A) {
+        if(A.type !== 'beam') return UA.apply(this, arguments);
+        const T = GAME.tod, p = GAME.p, b = T.boss; A.t++; if(!b) { T.atk = null; return; }
+        const e = this.eyePos(b);
+        if(A.t === 1) { A.st = 'charge'; A.a0 = NaN; /* (the old sector lines draw nothing with NaN) */ A.dir = Math.random() < 0.5 ? 1 : -1; A.lockAt = A.charge - LOCK; TOD.au.tone(150, 'sawtooth', 1.2, 0.12, 900); }
+        if(A.st === 'charge') {
+            if(A.t <= A.lockAt) A.aim = Math.atan2(p.y - e.y, p.x - e.x);
+            if(A.t === A.lockAt) { TOD.au.tone(980, 'square', 0.1, 0.12); TOD.au.tone(1300, 'square', 0.06, 0.08); }
+            if(A.t >= A.charge) { A.st = 'fire'; A.t0 = A.t; TOD.au.noise(1.6, 0.4, 1200, 'bandpass'); GAME.shake = Math.max(GAME.shake, 5); }
+            return;
+        }
+        const k = (A.t - A.t0) / A.sweep, a = A.aim + A.dir * ARC * (k * k * (3 - 2 * k)); A.ang = a; // starts where you WERE, then swings away
+        const ex = e.x + Math.cos(a) * 1400, ey = e.y + Math.sin(a) * 1400;
+        if(this.segDist(p.x, p.y, e.x, e.y, ex, ey) < 20) p.hit(this.dmgOf(0.1));
+        if(A.t % 6 === 0) { const d = 200 + Math.random() * 600; GAME.spawnParticles(e.x + Math.cos(a) * d, e.y + Math.sin(a) * d, '#ff2a1a', 3); }
+        T.houses.forEach(h => { if(!h.dead && this.segDist(h.x, h.y - 30, e.x, e.y, ex, ey) < 40) this.breakHouse(h); });
+        if(k >= 1) T.atk = null;
+    };
+    // the warning: the danger zone it will sweep, the aim line (locks + flashes), and an arrow showing where it swings
+    const DW = TODB.drawWorld; TODB.drawWorld = function(ctx, cx, cy) {
+        const r = DW.apply(this, arguments); const T = GAME.tod, A = T && T.atk, b = T && T.boss;
+        if(!A || A.type !== 'beam' || A.st !== 'charge' || A.aim == null || !b || T.hold) return r;
+        const e = this.eyePos(b), ex = e.x - cx, ey = e.y - cy, locked = A.t > A.lockAt, k = Math.min(1, A.t / A.charge), fl = locked && Math.floor(A.t / 4) % 2;
+        ctx.save();
+        ctx.globalAlpha = (locked ? 0.2 : 0.1) + (fl ? 0.08 : 0); ctx.fillStyle = '#ff2a1a'; ctx.beginPath(); ctx.moveTo(ex, ey);
+        for(let i = 0; i <= 16; i++) { const a = A.aim + A.dir * ARC * i / 16; ctx.lineTo(ex + Math.cos(a) * 1400, ey + Math.sin(a) * 1400); } ctx.closePath(); ctx.fill();
+        const L = (a, w, col, al) => { ctx.globalAlpha = al; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.cos(a) * 1400, ey + Math.sin(a) * 1400); ctx.stroke(); };
+        if(locked) { L(A.aim, 10, '#ff2a1a', 0.5); L(A.aim, 3, fl ? '#ffffff' : '#ffd13b', 0.95); } else { ctx.setLineDash([10, 8]); ctx.lineDashOffset = -A.t * 2; L(A.aim, 2, '#ff6a4a', 0.8); ctx.setLineDash([]); }
+        // arrow (pixel chevrons) at your distance, pointing the way the beam will swing
+        const pd = Math.hypot(GAME.p.x - e.x, GAME.p.y - e.y), R = Math.max(120, pd);
+        ctx.globalAlpha = 0.6 + 0.4 * k; ctx.fillStyle = '#ffd13b';
+        for(let c = 0; c < 4; c++) { const a = A.aim + A.dir * (0.16 + c * 0.2) + A.dir * ((A.t * 0.004) % 0.2), x = ex + Math.cos(a) * R, y = ey + Math.sin(a) * R, ta = a + A.dir * Math.PI / 2;
+            for(let i = -3; i <= 3; i++) { const back = Math.abs(i) * 3; ctx.fillRect(Math.round(x - Math.cos(ta) * back + Math.cos(ta + Math.PI / 2) * i * 3) - 2, Math.round(y - Math.sin(ta) * back + Math.sin(ta + Math.PI / 2) * i * 3) - 2, 4, 4); } }
+        ctx.restore(); return r;
+    };
+    // ---- his last hit: your weapons vanish first, and you stay on top while he winds up ----
+    const HDth = TODB.holdDeath; TODB.holdDeath = function(H) {
+        if(H.t === 1) { (GAME.projs || []).forEach((q, i) => { if(i % 2 === 0 && isFinite(q.x)) GAME.spawnParticles(q.x, q.y, '#c8c0ff', 4); }); GAME.projs = []; GAME.shockwaves = []; GAME.spawnShockwave(GAME.p.x, GAME.p.y, '#c8c0ff', 120, 18, 3); }
+        return HDth.apply(this, arguments);
+    };
+    const DW2 = TODB.drawWorld; TODB.drawWorld = function(ctx, cx, cy) {
+        const r = DW2.apply(this, arguments); const T = GAME.tod, H = T && T.hold, p = GAME.p;
+        if(!H || H.kind !== 'death' || T.hidePl || !p || H.t >= 220 || H.t < 130) return r; // (130..220 = his wind-up)
+        const x = Math.round(p.x - cx), y = Math.round(p.y - cy), k = Math.min(1, (H.t - 130) / 30), n = 18, rad = 34 + Math.sin(H.t * 0.25) * 3;
+        ctx.save(); ctx.globalAlpha = 0.7 * k; ctx.fillStyle = Math.floor(H.t / 6) % 2 ? '#ffffff' : '#ffd13b';
+        for(let i = 0; i < n; i++) { const a = i / n * 6.283 + H.t * 0.03; ctx.fillRect(Math.round(x + Math.cos(a) * rad) - 2, Math.round(y + 14 + Math.sin(a) * rad * 0.45) - 2, 4, 4); }
+        ctx.restore();
+        try { p.draw(ctx, cx, cy); } catch(e) {}
+        return r;
+    };
+})();
 /* ---------- INVENTORY (v3.14.0): special items only (event items you can't get any other way) ---------- */
 var INVENTORY = {
     ITEMS: {
@@ -19351,7 +19944,7 @@ var INVENTORY = {
 })();
 /* ---------- MOD MENU: jump to any part of TRICK OR DEATH (testing, local file only) ---------- */
 TOD.DEV = [['house', 'HOUSE START'], ['note', 'KNOCK + NOTE'], ['fall', 'THE FALL'], ['street', 'STREET (WAKE UP)'], ['candy', 'STREET 24 CANDY'], ['mansion', 'MANSION DOOR'], ['eerie', 'RED STREET'], ['rise', 'HANDS + BOSS RISES'],
-    ['boss', 'BOSS (FULL ENTRANCE)'], ['bossShort', 'BOSS (SHORT)'], ['grab', 'BOSS -> EYE GRAB'], ['death', 'BOSS -> DEATH'], ['ending', 'ENDING (HOLE)'], ['chest', 'ENDING (CHEST)'], ['end', 'THE END']];
+    ['boss', 'BOSS (FULL ENTRANCE)'], ['bossShort', 'BOSS (SHORT)'], ['grab', 'BOSS -> EYE GRAB'], ['death', 'BOSS -> DEATH'], ['finale', 'FINALE MOVIE'], ['ending', 'ENDING (HOLE)'], ['chest', 'ENDING (CHEST)'], ['end', 'THE END']];
 TOD.dev = function(k) {
     if(!ADMIN.on()) return;
     ADMIN.close(); ADMIN.mark();
@@ -19368,6 +19961,7 @@ TOD.dev = function(k) {
     else if(k === 'rise') { TOD.setCh(2); go('eerie', { wake: false }); TOD.S.eerie.pl.x = 548; }
     else if(k === 'boss') { TOD.setCh(3); TOD.hide(); TODB.start({ intro: true }); }
     else if(k === 'bossShort' || k === 'grab' || k === 'death') { TOD.setCh(3); TOD.hide(); TODB.devAfter = k === 'bossShort' ? null : k; TODB.start({ intro: false }); }
+    else if(k === 'finale') { TOD.setCh(4); go('finale'); }
     else if(k === 'ending') go('ending');
     else if(k === 'chest') { go('ending'); const e = TOD.S.ending, st = e.st; e.step = 1; e.ct = 600; st.hole = 0; st.cracks = []; st.hidePl = false; st.plDy = 0; Object.assign(st.pl, { fl: 1, y: 112, x: 540, lock: false }); TOD.setTask('GO TO YOUR ROOM'); }
     else if(k === 'end') go('theend');
@@ -19911,8 +20505,19 @@ function applyGearUpgrade(type, key, amount) {
    art: { map, hero, fx: 'beams'|'skulls'|'swarm'|'chest'|'stack'|'rift'|'pumpkins'|'slash'|'duo', boss, foes: [...], extra, banner, bannerCol, seed } */
 var UPDATE_LOGS = [
     {
+        date: "October 29, 2026",
+        version: "v3.15.11",
+        art: { map: 8, hero: 'h_knight', hero2: 'h_warlock', fx: 'duo', foes: ['e_ghost', 'e_imp', 'e_skel'], boss: 'e_void_gazer', banner: 'MULTIPLAYER FIXED', bannerCol: '#4deeea', seed: 40 },
+        notes: [
+            "DUELS PAUSE: Pausing now stops the duel for BOTH players. Your rival sees YOUR RIVAL PAUSED with your pause time counting down - only the player who paused can resume, the other one can still FORFEIT. Pause time is now 1:00 per player per duel (was 3:00).",
+            "DUELS LEAVING: If your rival closes the tab, leaves the page or loses their connection, they FORFEIT and you win right away (at most ~12 seconds if their connection just dies). If they had already finished, their score still counts.",
+            "BUG FIXES: Multiplayer on school or home wifi that blocks a direct link (the game then plays through a RELAY): your friend could get dropped right after joining (\"YOUR PARTNER LEFT THE LOBBY\"). Fixed - tested with a direct link and 2 of the 4 relays blocked.",
+            "CONNECTION CHECK: one relay saying FAILED is OK - only ONE relay has to work on both devices. Spare relays now say OK - NOT NEEDED instead of DROPPED."
+        ]
+    },
+    {
         date: "October 28, 2026",
-        version: "v3.15.5",
+        version: "v3.15.6",
         art: { map: 6, hero: 'h_tod_guy', fx: 'rift', foes: ['e_ghost', 'e_witch_bat', 'e_imp'], boss: 'e_void_gazer', banner: 'SOMETHING HAS APPEARED', bannerCol: '#ff2a2a', seed: 39 },
         notes: [
             "SOMETHING HAS APPEARED... Check the Battle screen. COMING SOON - FRIDAY OCT 30, 8:30 AM. That's all you get to know. For now.",
